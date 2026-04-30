@@ -47,6 +47,12 @@ export default function Home() {
   const [calendarMonth, setCalendarMonth] = useState(new Date())
   const [view, setView] = useState<'today' | 'history'>('today')
   const [historyLogs, setHistoryLogs] = useState<DailyLog[]>([])
+  const [newTodo, setNewTodo] = useState('')
+  const [newCategory, setNewCategory] = useState('기타')
+  const [addingTodo, setAddingTodo] = useState(false)
+  const [editingLog, setEditingLog] = useState(false)
+  const [logDraft, setLogDraft] = useState('')
+  const [savingLog, setSavingLog] = useState(false)
 
   const fetchData = useCallback(async (date: Date) => {
     setLoading(true)
@@ -93,6 +99,41 @@ export default function Home() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: todo.id, done: !todo.done })
     })
+  }
+
+  const createTodo = async () => {
+    if (!newTodo.trim()) return
+    setAddingTodo(true)
+    try {
+      const res = await fetch('/api/todos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTodo, category: newCategory, date: toDateStr(selectedDate) })
+      })
+      const data = await res.json()
+      if (data.todo) {
+        setTodos(prev => [...prev, data.todo])
+        setNewTodo('')
+      }
+    } finally {
+      setAddingTodo(false)
+    }
+  }
+
+  const saveLog = async () => {
+    if (!dailyLog) return
+    setSavingLog(true)
+    try {
+      await fetch('/api/daily-log', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: dailyLog.id, content: logDraft })
+      })
+      setDailyLog(prev => prev ? { ...prev, content: logDraft } : prev)
+      setEditingLog(false)
+    } finally {
+      setSavingLog(false)
+    }
   }
 
   const completedCount = todos.filter(t => t.done).length
@@ -198,6 +239,29 @@ export default function Home() {
               ))}
             </div>
 
+            {/* Add todo */}
+            <div className={styles.addTodoRow}>
+              <select
+                className={styles.categorySelect}
+                value={newCategory}
+                onChange={e => setNewCategory(e.target.value)}
+              >
+                {Object.keys(CATEGORY_COLORS).map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <input
+                className={styles.addTodoInput}
+                placeholder="할일 추가..."
+                value={newTodo}
+                onChange={e => setNewTodo(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && createTodo()}
+              />
+              <button className={styles.addTodoBtn} onClick={createTodo} disabled={addingTodo}>
+                {addingTodo ? '...' : '+'}
+              </button>
+            </div>
+
             <div className={styles.divider} />
 
             <div className={styles.sectionTitle}>
@@ -206,13 +270,36 @@ export default function Home() {
             </div>
 
             {dailyLog ? (
-              <a href={dailyLog.notionUrl} target="_blank" rel="noopener noreferrer" className={styles.logCard}>
-                <div className={styles.logContent}>{dailyLog.content || '기록 없음 — 클릭해서 작성하기'}</div>
-                <div className={styles.logFooter}>
-                  <span>노션에서 열기 →</span>
-                  <span>{dailyLog.completionRate}% 달성</span>
-                </div>
-              </a>
+              <div className={styles.logCard}>
+                {editingLog ? (
+                  <>
+                    <textarea
+                      className={styles.logTextarea}
+                      value={logDraft}
+                      onChange={e => setLogDraft(e.target.value)}
+                      placeholder="오늘 하루를 기록해보세요..."
+                      autoFocus
+                    />
+                    <div className={styles.logFooter}>
+                      <a href={`https://notion.so/${dailyLog.id.replace(/-/g, '')}`} target="_blank" rel="noopener noreferrer" className={styles.logLink}>노션에서 열기 →</a>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className={styles.logCancelBtn} onClick={() => setEditingLog(false)}>취소</button>
+                        <button className={styles.logSaveBtn} onClick={saveLog} disabled={savingLog}>{savingLog ? '저장 중...' : '저장'}</button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className={styles.logContent} onClick={() => { setLogDraft(dailyLog.content); setEditingLog(true) }}>
+                      {dailyLog.content || '클릭해서 오늘 기록 작성하기...'}
+                    </div>
+                    <div className={styles.logFooter}>
+                      <a href={`https://notion.so/${dailyLog.id.replace(/-/g, '')}`} target="_blank" rel="noopener noreferrer" className={styles.logLink}>노션에서 열기 →</a>
+                      <span>{dailyLog.completionRate}% 달성</span>
+                    </div>
+                  </>
+                )}
+              </div>
             ) : (
               <button className={styles.createLogBtn} onClick={async () => {
                 const res = await fetch('/api/daily-log', {

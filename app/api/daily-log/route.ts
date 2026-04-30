@@ -46,7 +46,21 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function PATCH(req: NextRequest) {
+  const { id, content } = await req.json()
+  try {
+    await notion.pages.update({
+      page_id: id,
+      properties: {
+        '오늘기록': { rich_text: [{ text: { content } }] }
+      }
+    })
+    return NextResponse.json({ ok: true })
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 })
+  }
+}
+
   const { date } = await req.json()
   try {
     const page = await notion.pages.create({

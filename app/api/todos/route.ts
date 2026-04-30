@@ -33,7 +33,34 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function PATCH(req: NextRequest) {
+export async function POST(req: NextRequest) {
+  const { title, category, date } = await req.json()
+  try {
+    const page = await notion.pages.create({
+      parent: { database_id: TODO_DB_ID },
+      properties: {
+        '할 일': { title: [{ text: { content: title } }] },
+        '업무구분': { select: { name: category } },
+        '날짜': { date: { start: date } },
+        '': { checkbox: false }
+      }
+    }) as any
+    const todo = {
+      id: page.id,
+      url: page.url,
+      title: page.properties['할 일']?.title?.[0]?.plain_text || title,
+      category: page.properties['업무구분']?.select?.name || category,
+      done: false,
+      note: '',
+      date,
+    }
+    return NextResponse.json({ todo })
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 })
+  }
+}
+
+
   const { id, done } = await req.json()
   try {
     await notion.pages.update({

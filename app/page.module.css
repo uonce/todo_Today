@@ -293,7 +293,72 @@
   flex-shrink: 0;
 }
 
-.divider {
+.addTodoRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  margin-bottom: 8px;
+}
+
+.categorySelect {
+  padding: 8px 10px;
+  border: 1.5px solid #e0dbd1;
+  border-radius: 8px;
+  background: #fff;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 12px;
+  color: #3d3328;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.addTodoInput {
+  flex: 1;
+  padding: 8px 14px;
+  border: 1.5px solid #e0dbd1;
+  border-radius: 8px;
+  background: #fff;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 14px;
+  color: #3d3328;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.addTodoInput:focus {
+  border-color: #7c6f5a;
+}
+
+.addTodoInput::placeholder {
+  color: #c8bfb0;
+}
+
+.addTodoBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  background: #3d3328;
+  color: #f5f2ec;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.addTodoBtn:hover {
+  background: #7c6f5a;
+}
+
+.addTodoBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
   height: 1.5px;
   background: #e0dbd1;
   margin: 24px 0;
@@ -326,7 +391,65 @@
   white-space: pre-wrap;
 }
 
-.logFooter {
+.logTextarea {
+  width: 100%;
+  min-height: 120px;
+  border: none;
+  outline: none;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 14px;
+  color: #4a4035;
+  line-height: 1.7;
+  resize: vertical;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+.logLink {
+  color: #9a8e7c;
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.logLink:hover {
+  color: #3d3328;
+}
+
+.logSaveBtn {
+  padding: 4px 14px;
+  background: #3d3328;
+  color: #f5f2ec;
+  border: none;
+  border-radius: 6px;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.logSaveBtn:disabled {
+  opacity: 0.5;
+}
+
+.logCancelBtn {
+  padding: 4px 14px;
+  background: transparent;
+  color: #9a8e7c;
+  border: 1px solid #e0dbd1;
+  border-radius: 6px;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.logContent {
+  cursor: pointer;
+}
+
+.logContent:hover {
+  opacity: 0.8;
+}
+
+
   display: flex;
   justify-content: space-between;
   margin-top: 14px;
