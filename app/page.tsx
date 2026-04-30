@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import styles from './page.module.css'
 
 interface Todo {
@@ -38,6 +38,11 @@ const CATEGORY_COLORS: Record<string, string> = {
   '기타': '#d1d5db',
 }
 
+const ROUTINES = [
+  { title: '알고리즘 문제 풀기(2문제)', category: '알고리즘' },
+  { title: '토익 문제 풀기(3문제)', category: '토익' },
+]
+
 export default function Home() {
   const [today] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -54,9 +59,15 @@ export default function Home() {
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null)
   const [editTodoTitle, setEditTodoTitle] = useState('')
   const [editTodoCategory, setEditTodoCategory] = useState('')
+  const [editTodoNote, setEditTodoNote] = useState('')
   const [editingLog, setEditingLog] = useState(false)
   const [logDraft, setLogDraft] = useState('')
   const [savingLog, setSavingLog] = useState(false)
+  const [draggedId, setDraggedId] = useState<string | null>(null)
+  const [loadingRoutine, setLoadingRoutine] = useState(false)
+
+  const dragItem = useRef<string | null>(null)
+  const dragOverItem = useRef<string | null>(null)
 
   const fetchData = useCallback(async (date: Date) => {
     setLoading(true)
@@ -117,17 +128,18 @@ export default function Home() {
     setEditingTodoId(todo.id)
     setEditTodoTitle(todo.title)
     setEditTodoCategory(todo.category)
+    setEditTodoNote(todo.note)
   }
 
   const updateTodo = async () => {
     if (!editingTodoId || !editTodoTitle.trim()) return
     const id = editingTodoId
-    setTodos(prev => prev.map(t => t.id === id ? { ...t, title: editTodoTitle, category: editTodoCategory } : t))
+    setTodos(prev => prev.map(t => t.id === id ? { ...t, title: editTodoTitle, category: editTodoCategory, note: editTodoNote } : t))
     setEditingTodoId(null)
     await fetch('/api/todos', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, title: editTodoTitle, category: editTodoCategory })
+      body: JSON.stringify({ id, title: editTodoTitle, category: editTodoCategory, note: editTodoNote })
     })
   }
 
@@ -148,6 +160,51 @@ export default function Home() {
     } finally {
       setAddingTodo(false)
     }
+  }
+
+  const loadRoutine = async () => {
+    setLoadingRoutine(true)
+    try {
+      const dateStr = toDateStr(selectedDate)
+      for (const r of ROUTINES) {
+        const res = await fetch('/api/todos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: r.title, category: r.category, date: dateStr })
+        })
+        const data = await res.json()
+        if (data.todo) setTodos(prev => [...prev, data.todo])
+      }
+    } finally {
+      setLoadingRoutine(false)
+    }
+  }
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    dragItem.current = id
+    dragOverItem.current = null
+    e.dataTransfer.effectAllowed = 'move'
+    setDraggedId(id)
+  }
+
+  const handleDragEnter = (id: string) => {
+    if (!dragItem.current || id === dragItem.current || id === dragOverItem.current) return
+    dragOverItem.current = id
+    setTodos(prev => {
+      const items = [...prev]
+      const fromIdx = items.findIndex(t => t.id === dragItem.current)
+      const toIdx = items.findIndex(t => t.id === id)
+      if (fromIdx === -1 || toIdx === -1) return prev
+      const [removed] = items.splice(fromIdx, 1)
+      items.splice(toIdx, 0, removed)
+      return items
+    })
+  }
+
+  const handleDragEnd = () => {
+    dragItem.current = null
+    dragOverItem.current = null
+    setDraggedId(null)
   }
 
   const saveLog = async () => {
@@ -181,6 +238,7 @@ export default function Home() {
   const { firstDay, daysInMonth } = getDaysInMonth(calendarMonth)
   const todayStr = toDateStr(today)
   const selectedStr = toDateStr(selectedDate)
+  const isEditing = editingTodoId !== null
 
   return (
     <div className={styles.container}>
@@ -247,18 +305,27 @@ export default function Home() {
               {Object.keys(CATEGORY_COLORS).map(c => <option key={c} value={c} />)}
             </datalist>
 
-            {/* Todo section title + add button */}
+            {/* Todo section title + buttons */}
             <div className={styles.sectionTitleRow}>
               <div className={styles.sectionTitle}>
                 <span className={styles.pin}>📌</span>
                 {toDateStr(selectedDate) === todayStr ? '오늘의 할일' : `${selectedDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} 할일`}
               </div>
-              <button
-                className={`${styles.addTodoToggleBtn} ${showAddForm ? styles.addTodoToggleBtnActive : ''}`}
-                onClick={() => { setShowAddForm(v => !v); setNewTodo('') }}
-              >
-                +
-              </button>
+              <div className={styles.sectionActions}>
+                <button
+                  className={styles.routineBtn}
+                  onClick={loadRoutine}
+                  disabled={loadingRoutine}
+                >
+                  {loadingRoutine ? '추가 중...' : '루틴 불러오기'}
+                </button>
+                <button
+                  className={`${styles.addTodoToggleBtn} ${showAddForm ? styles.addTodoToggleBtnActive : ''}`}
+                  onClick={() => { setShowAddForm(v => !v); setNewTodo('') }}
+                >
+                  +
+                </button>
+              </div>
             </div>
 
             {/* Add todo form */}
@@ -291,52 +358,110 @@ export default function Home() {
                 <div className={styles.empty}>불러오는 중...</div>
               ) : todos.length === 0 ? (
                 <div className={styles.empty}>할일이 없어요</div>
-              ) : todos.map(todo => (
-                <div key={todo.id} className={`${styles.todoItem} ${todo.done ? styles.todoDone : ''}`}>
-                  <button className={styles.checkbox} onClick={() => toggleTodo(todo)}>
-                    {todo.done ? '✓' : ''}
-                  </button>
-                  {editingTodoId === todo.id ? (
-                    <>
-                      <input
-                        list="category-options"
-                        className={styles.editCategoryInput}
-                        value={editTodoCategory}
-                        onChange={e => setEditTodoCategory(e.target.value)}
-                        placeholder="카테고리"
-                      />
-                      <input
-                        className={styles.editTitleInput}
-                        value={editTodoTitle}
-                        onChange={e => setEditTodoTitle(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') updateTodo()
-                          if (e.key === 'Escape') setEditingTodoId(null)
-                        }}
-                        autoFocus
-                      />
-                      <button className={styles.editSaveBtn} onClick={updateTodo}>저장</button>
-                      <button className={styles.editCancelBtn} onClick={() => setEditingTodoId(null)}>취소</button>
-                    </>
-                  ) : (
-                    <>
-                      <span className={styles.categoryBadge} style={{ background: CATEGORY_COLORS[todo.category] || '#e5e7eb' }}>
-                        {todo.category}
-                      </span>
-                      <span className={styles.todoTitle} onClick={() => startEditTodo(todo)}>
-                        {todo.title}
-                      </span>
-                      {todo.note && <span className={styles.todoNote}>{todo.note}</span>}
-                    </>
-                  )}
-                  <button className={styles.deleteBtn} onClick={() => deleteTodo(todo.id)} title="삭제">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
+              ) : todos.map(todo => {
+                const editing = editingTodoId === todo.id
+                return (
+                  <div
+                    key={todo.id}
+                    className={[
+                      styles.todoItem,
+                      todo.done ? styles.todoDone : '',
+                      draggedId === todo.id ? styles.todoItemDragging : '',
+                      editing ? styles.todoItemEditing : '',
+                    ].join(' ')}
+                    draggable={!isEditing}
+                    onDragStart={e => handleDragStart(e, todo.id)}
+                    onDragEnter={() => handleDragEnter(todo.id)}
+                    onDragOver={e => e.preventDefault()}
+                    onDragEnd={handleDragEnd}
+                  >
+                    {/* Drag handle */}
+                    <span className={styles.dragHandle}>
+                      <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor">
+                        <circle cx="4" cy="3" r="1.5" />
+                        <circle cx="4" cy="8" r="1.5" />
+                        <circle cx="4" cy="13" r="1.5" />
+                        <circle cx="8" cy="3" r="1.5" />
+                        <circle cx="8" cy="8" r="1.5" />
+                        <circle cx="8" cy="13" r="1.5" />
+                      </svg>
+                    </span>
+
+                    {/* Checkbox */}
+                    <button
+                      className={styles.checkbox}
+                      onClick={() => toggleTodo(todo)}
+                      style={editing ? { alignSelf: 'flex-start', marginTop: 4 } : undefined}
+                    >
+                      {todo.done ? '✓' : ''}
+                    </button>
+
+                    {editing ? (
+                      <div className={styles.todoEditArea}>
+                        <div className={styles.todoEditTopRow}>
+                          <input
+                            list="category-options"
+                            className={styles.editCategoryInput}
+                            value={editTodoCategory}
+                            onChange={e => setEditTodoCategory(e.target.value)}
+                            placeholder="카테고리"
+                          />
+                          <input
+                            className={styles.editTitleInput}
+                            value={editTodoTitle}
+                            onChange={e => setEditTodoTitle(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') updateTodo()
+                              if (e.key === 'Escape') setEditingTodoId(null)
+                            }}
+                            autoFocus
+                          />
+                        </div>
+                        <input
+                          className={styles.editNoteInput}
+                          value={editTodoNote}
+                          onChange={e => setEditTodoNote(e.target.value)}
+                          placeholder="비고 (선택사항)"
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') updateTodo()
+                            if (e.key === 'Escape') setEditingTodoId(null)
+                          }}
+                        />
+                        <div className={styles.todoEditActions}>
+                          <button className={styles.editCancelBtn} onClick={() => setEditingTodoId(null)}>취소</button>
+                          <button className={styles.editSaveBtn} onClick={updateTodo}>저장</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <span
+                          className={styles.categoryBadge}
+                          style={{ background: CATEGORY_COLORS[todo.category] || '#e5e7eb' }}
+                        >
+                          {todo.category}
+                        </span>
+                        <span className={styles.todoTitle} onClick={() => startEditTodo(todo)}>
+                          {todo.title}
+                        </span>
+                        {todo.note && <span className={styles.todoNote}>{todo.note}</span>}
+                      </>
+                    )}
+
+                    {/* Delete button */}
+                    <button
+                      className={styles.deleteBtn}
+                      onClick={() => deleteTodo(todo.id)}
+                      title="삭제"
+                      style={editing ? { alignSelf: 'flex-start', marginTop: 2 } : undefined}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                      </svg>
+                    </button>
+                  </div>
+                )
+              })}
             </div>
 
             <div className={styles.divider} />

@@ -77,13 +77,14 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const { id, title, category } = await req.json()
+  const { id, title, category, note } = await req.json()
   try {
     await notion.pages.update({
       page_id: id,
       properties: {
         '할 일': { title: [{ text: { content: title } }] },
         '업무구분': { select: { name: category } },
+        '비고': note ? { rich_text: [{ text: { content: note } }] } : { rich_text: [] },
       }
     })
     return NextResponse.json({ ok: true })
