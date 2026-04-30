@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=DM+Serif+Display:ital@0;1&display=swap');
+
+.container {
+  min-height: 100vh;
+  background: #f5f2ec;
+  font-family: 'Gowun Dodum', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card {
+  background: #fff;
+  border: 1.5px solid #e0dbd1;
+  border-radius: 20px;
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logoIcon {
+  font-size: 22px;
+  color: #7c6f5a;
+}
+
+.logoText {
+  font-family: 'DM Serif Display', serif;
+  font-size: 28px;
+  color: #3d3328;
+  letter-spacing: 3px;
+}
+
+.form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1.5px solid #e0dbd1;
+  border-radius: 10px;
+  background: #faf8f3;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 15px;
+  color: #3d3328;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+  text-align: center;
+  letter-spacing: 3px;
+}
+
+.input:focus {
+  border-color: #7c6f5a;
+}
+
+.input::placeholder {
+  color: #c8bfb0;
+  letter-spacing: 0;
+}
+
+.button {
+  width: 100%;
+  padding: 12px;
+  background: #3d3328;
+  color: #f5f2ec;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.button:hover {
+  background: #7c6f5a;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error {
+  font-size: 13px;
+  color: #ef4444;
+  text-align: center;
+}

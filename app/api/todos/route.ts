@@ -3,6 +3,7 @@ import { Client } from '@notionhq/client'
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN })
 const TODO_DB_ID = process.env.TODO_DB_ID!
+const DAILY_LOG_RELATION = process.env.TODO_DAILY_LOG_RELATION
 
 export async function GET(req: NextRequest) {
   const date = req.nextUrl.searchParams.get('date')
@@ -34,16 +35,20 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { title, category, date } = await req.json()
+  const { title, category, date, logId } = await req.json()
+  const properties: any = {
+    '할 일': { title: [{ text: { content: title } }] },
+    '업무구분': { select: { name: category } },
+    '날짜': { date: { start: date } },
+    '': { checkbox: false }
+  }
+  if (logId && DAILY_LOG_RELATION) {
+    properties[DAILY_LOG_RELATION] = { relation: [{ id: logId }] }
+  }
   try {
     const page = await notion.pages.create({
       parent: { database_id: TODO_DB_ID },
-      properties: {
-        '할 일': { title: [{ text: { content: title } }] },
-        '업무구분': { select: { name: category } },
-        '날짜': { date: { start: date } },
-        '': { checkbox: false }
-      }
+      properties
     }) as any
     const todo = {
       id: page.id,

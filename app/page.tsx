@@ -27,7 +27,10 @@ function formatDate(date: Date) {
 }
 
 function toDateStr(date: Date) {
-  return date.toISOString().split('T')[0]
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -150,7 +153,7 @@ export default function Home() {
       const res = await fetch('/api/todos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newTodo, category: newCategory, date: toDateStr(selectedDate) })
+        body: JSON.stringify({ title: newTodo, category: newCategory, date: toDateStr(selectedDate), logId: dailyLog?.id })
       })
       const data = await res.json()
       if (data.todo) {
@@ -170,7 +173,7 @@ export default function Home() {
         const res = await fetch('/api/todos', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: r.title, category: r.category, date: dateStr })
+          body: JSON.stringify({ title: r.title, category: r.category, date: dateStr, logId: dailyLog?.id })
         })
         const data = await res.json()
         if (data.todo) setTodos(prev => [...prev, data.todo])
