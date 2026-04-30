@@ -245,7 +245,7 @@ export default function Home() {
       <header className={styles.header}>
         <div className={styles.headerLeft}>
           <span className={styles.logo}>✦</span>
-          <span className={styles.logoText}>daily</span>
+          <span className={styles.logoText}>오늘할일</span>
         </div>
         <div className={styles.headerNav}>
           <button className={view === 'today' ? styles.navActive : styles.navBtn} onClick={() => setView('today')}>오늘</button>
