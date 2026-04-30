@@ -3,7 +3,33 @@ import { Client } from '@notionhq/client'
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN })
 const TODO_DB_ID = process.env.TODO_DB_ID!
-const DAILY_LOG_RELATION = process.env.TODO_DAILY_LOG_RELATION
+const DAILY_LOG_DB_ID = process.env.DAILY_LOG_DB_ID
+
+// Notion DB 스키마에서 Daily Log를 가리키는 관계형 속성명을 자동 감지 (캐시)
+let cachedRelationProp: string | null | undefined = undefined
+
+async function getDailyLogRelationProp(): Promise<string | null> {
+  if (cachedRelationProp !== undefined) return cachedRelationProp
+  if (!DAILY_LOG_DB_ID) {
+    cachedRelationProp = null
+    return null
+  }
+  try {
+    const db = await notion.databases.retrieve({ database_id: TODO_DB_ID }) as any
+    const normalize = (id: string) => id.replace(/-/g, '')
+    for (const [name, prop] of Object.entries(db.properties as any)) {
+      if (
+        (prop as any).type === 'relation' &&
+        normalize((prop as any).relation?.database_id || '') === normalize(DAILY_LOG_DB_ID)
+      ) {
+        cachedRelationProp = name
+        return name
+      }
+    }
+  } catch {}
+  cachedRelationProp = null
+  return null
+}
 
 export async function GET(req: NextRequest) {
   const date = req.nextUrl.searchParams.get('date')
@@ -42,8 +68,11 @@ export async function POST(req: NextRequest) {
     '날짜': { date: { start: date } },
     '': { checkbox: false }
   }
-  if (logId && DAILY_LOG_RELATION) {
-    properties[DAILY_LOG_RELATION] = { relation: [{ id: logId }] }
+  if (logId) {
+    const relProp = await getDailyLogRelationProp()
+    if (relProp) {
+      properties[relProp] = { relation: [{ id: logId }] }
+    }
   }
   try {
     const page = await notion.pages.create({
@@ -64,7 +93,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
 }
-
 
 export async function PATCH(req: NextRequest) {
   const { id, done } = await req.json()
