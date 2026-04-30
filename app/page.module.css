@@ -358,7 +358,7 @@
   cursor: not-allowed;
 }
 
-
+.divider {
   height: 1.5px;
   background: #e0dbd1;
   margin: 24px 0;
@@ -389,6 +389,11 @@
   line-height: 1.7;
   min-height: 60px;
   white-space: pre-wrap;
+  cursor: pointer;
+}
+
+.logContent:hover {
+  opacity: 0.8;
 }
 
 .logTextarea {
@@ -441,15 +446,7 @@
   cursor: pointer;
 }
 
-.logContent {
-  cursor: pointer;
-}
-
-.logContent:hover {
-  opacity: 0.8;
-}
-
-
+.logFooter {
   display: flex;
   justify-content: space-between;
   margin-top: 14px;

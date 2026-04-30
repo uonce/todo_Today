@@ -61,6 +61,7 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
+export async function POST(req: NextRequest) {
   const { date } = await req.json()
   try {
     const page = await notion.pages.create({

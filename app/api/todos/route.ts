@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
 }
 
 
+export async function PATCH(req: NextRequest) {
   const { id, done } = await req.json()
   try {
     await notion.pages.update({
