@@ -75,3 +75,32 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
 }
+
+export async function PUT(req: NextRequest) {
+  const { id, title, category } = await req.json()
+  try {
+    await notion.pages.update({
+      page_id: id,
+      properties: {
+        '할 일': { title: [{ text: { content: title } }] },
+        '업무구분': { select: { name: category } },
+      }
+    })
+    return NextResponse.json({ ok: true })
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 })
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  const { id } = await req.json()
+  try {
+    await notion.pages.update({
+      page_id: id,
+      archived: true
+    })
+    return NextResponse.json({ ok: true })
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 })
+  }
+}

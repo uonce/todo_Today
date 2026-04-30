@@ -50,6 +50,10 @@ export default function Home() {
   const [newTodo, setNewTodo] = useState('')
   const [newCategory, setNewCategory] = useState('기타')
   const [addingTodo, setAddingTodo] = useState(false)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [editingTodoId, setEditingTodoId] = useState<string | null>(null)
+  const [editTodoTitle, setEditTodoTitle] = useState('')
+  const [editTodoCategory, setEditTodoCategory] = useState('')
   const [editingLog, setEditingLog] = useState(false)
   const [logDraft, setLogDraft] = useState('')
   const [savingLog, setSavingLog] = useState(false)
@@ -92,12 +96,38 @@ export default function Home() {
   }, [view, fetchHistory])
 
   const toggleTodo = async (todo: Todo) => {
-    const optimistic = todos.map(t => t.id === todo.id ? { ...t, done: !t.done } : t)
-    setTodos(optimistic)
+    setTodos(prev => prev.map(t => t.id === todo.id ? { ...t, done: !t.done } : t))
     await fetch('/api/todos', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: todo.id, done: !todo.done })
+    })
+  }
+
+  const deleteTodo = async (id: string) => {
+    setTodos(prev => prev.filter(t => t.id !== id))
+    await fetch('/api/todos', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    })
+  }
+
+  const startEditTodo = (todo: Todo) => {
+    setEditingTodoId(todo.id)
+    setEditTodoTitle(todo.title)
+    setEditTodoCategory(todo.category)
+  }
+
+  const updateTodo = async () => {
+    if (!editingTodoId || !editTodoTitle.trim()) return
+    const id = editingTodoId
+    setTodos(prev => prev.map(t => t.id === id ? { ...t, title: editTodoTitle, category: editTodoCategory } : t))
+    setEditingTodoId(null)
+    await fetch('/api/todos', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, title: editTodoTitle, category: editTodoCategory })
     })
   }
 
@@ -140,7 +170,6 @@ export default function Home() {
   const totalCount = todos.length
   const completionPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
 
-  // Calendar
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear()
     const month = date.getMonth()
@@ -200,7 +229,6 @@ export default function Home() {
               })}
             </div>
 
-            {/* Weekly completion */}
             <div className={styles.weeklyCard}>
               <div className={styles.weeklyTitle}>주간 달성도</div>
               <div className={styles.weeklyBar}>
@@ -215,11 +243,49 @@ export default function Home() {
 
           {/* Right: Todos + Daily Log */}
           <section className={styles.rightSection}>
-            <div className={styles.sectionTitle}>
-              <span className={styles.pin}>📌</span>
-              {toDateStr(selectedDate) === todayStr ? '오늘의 할일' : `${selectedDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} 할일`}
+            <datalist id="category-options">
+              {Object.keys(CATEGORY_COLORS).map(c => <option key={c} value={c} />)}
+            </datalist>
+
+            {/* Todo section title + add button */}
+            <div className={styles.sectionTitleRow}>
+              <div className={styles.sectionTitle}>
+                <span className={styles.pin}>📌</span>
+                {toDateStr(selectedDate) === todayStr ? '오늘의 할일' : `${selectedDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} 할일`}
+              </div>
+              <button
+                className={`${styles.addTodoToggleBtn} ${showAddForm ? styles.addTodoToggleBtnActive : ''}`}
+                onClick={() => { setShowAddForm(v => !v); setNewTodo('') }}
+              >
+                +
+              </button>
             </div>
 
+            {/* Add todo form */}
+            {showAddForm && (
+              <div className={styles.addTodoRow}>
+                <input
+                  list="category-options"
+                  className={styles.categoryInput}
+                  placeholder="카테고리"
+                  value={newCategory}
+                  onChange={e => setNewCategory(e.target.value)}
+                />
+                <input
+                  className={styles.addTodoInput}
+                  placeholder="할일 추가..."
+                  value={newTodo}
+                  onChange={e => setNewTodo(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && createTodo()}
+                  autoFocus
+                />
+                <button className={styles.addTodoBtn} onClick={createTodo} disabled={addingTodo}>
+                  {addingTodo ? '...' : '↵'}
+                </button>
+              </div>
+            )}
+
+            {/* Todo list */}
             <div className={styles.todoList}>
               {loading ? (
                 <div className={styles.empty}>불러오는 중...</div>
@@ -230,36 +296,47 @@ export default function Home() {
                   <button className={styles.checkbox} onClick={() => toggleTodo(todo)}>
                     {todo.done ? '✓' : ''}
                   </button>
-                  <span className={styles.categoryBadge} style={{ background: CATEGORY_COLORS[todo.category] || '#e5e7eb' }}>
-                    {todo.category}
-                  </span>
-                  <span className={styles.todoTitle}>{todo.title}</span>
-                  {todo.note && <span className={styles.todoNote}>{todo.note}</span>}
+                  {editingTodoId === todo.id ? (
+                    <>
+                      <input
+                        list="category-options"
+                        className={styles.editCategoryInput}
+                        value={editTodoCategory}
+                        onChange={e => setEditTodoCategory(e.target.value)}
+                        placeholder="카테고리"
+                      />
+                      <input
+                        className={styles.editTitleInput}
+                        value={editTodoTitle}
+                        onChange={e => setEditTodoTitle(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') updateTodo()
+                          if (e.key === 'Escape') setEditingTodoId(null)
+                        }}
+                        autoFocus
+                      />
+                      <button className={styles.editSaveBtn} onClick={updateTodo}>저장</button>
+                      <button className={styles.editCancelBtn} onClick={() => setEditingTodoId(null)}>취소</button>
+                    </>
+                  ) : (
+                    <>
+                      <span className={styles.categoryBadge} style={{ background: CATEGORY_COLORS[todo.category] || '#e5e7eb' }}>
+                        {todo.category}
+                      </span>
+                      <span className={styles.todoTitle} onClick={() => startEditTodo(todo)}>
+                        {todo.title}
+                      </span>
+                      {todo.note && <span className={styles.todoNote}>{todo.note}</span>}
+                    </>
+                  )}
+                  <button className={styles.deleteBtn} onClick={() => deleteTodo(todo.id)} title="삭제">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                    </svg>
+                  </button>
                 </div>
               ))}
-            </div>
-
-            {/* Add todo */}
-            <div className={styles.addTodoRow}>
-              <select
-                className={styles.categorySelect}
-                value={newCategory}
-                onChange={e => setNewCategory(e.target.value)}
-              >
-                {Object.keys(CATEGORY_COLORS).map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-              <input
-                className={styles.addTodoInput}
-                placeholder="할일 추가..."
-                value={newTodo}
-                onChange={e => setNewTodo(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && createTodo()}
-              />
-              <button className={styles.addTodoBtn} onClick={createTodo} disabled={addingTodo}>
-                {addingTodo ? '...' : '+'}
-              </button>
             </div>
 
             <div className={styles.divider} />
