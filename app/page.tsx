@@ -694,9 +694,6 @@ export default function Home() {
 
           {/* Right: Todos + Daily Log */}
           <section className={styles.rightSection}>
-            <datalist id="category-options">
-              {Object.keys(CATEGORY_COLORS).map(c => <option key={c} value={c} />)}
-            </datalist>
 
             {/* Todo section title + buttons */}
             <div className={styles.sectionTitleRow}>
@@ -761,13 +758,15 @@ export default function Home() {
             {/* Add todo form */}
             {showAddForm && (
               <div className={styles.addTodoRow}>
-                <input
-                  list="category-options"
+                <select
                   className={styles.categoryInput}
-                  placeholder="카테고리"
                   value={newCategory}
                   onChange={e => setNewCategory(e.target.value)}
-                />
+                >
+                  {Object.keys(CATEGORY_COLORS).map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
                 <input
                   className={styles.addTodoInput}
                   placeholder="할일 추가..."
@@ -928,13 +927,18 @@ export default function Home() {
                     {editing ? (
                       <div className={styles.todoEditArea}>
                         <div className={styles.todoEditTopRow}>
-                          <input
-                            list="category-options"
+                          <select
                             className={styles.editCategoryInput}
                             value={editTodoCategory}
                             onChange={e => setEditTodoCategory(e.target.value)}
-                            placeholder="카테고리"
-                          />
+                          >
+                            {!CATEGORY_COLORS[editTodoCategory] && editTodoCategory && (
+                              <option value={editTodoCategory}>{editTodoCategory}</option>
+                            )}
+                            {Object.keys(CATEGORY_COLORS).map(c => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
                           <input
                             className={styles.editTitleInput}
                             value={editTodoTitle}
