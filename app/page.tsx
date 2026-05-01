@@ -113,6 +113,7 @@ export default function Home() {
   const [newCategoryColor, setNewCategoryColor] = useState('default')
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
   const [editingCategoryColor, setEditingCategoryColor] = useState('default')
+  const [editingCategoryName, setEditingCategoryName] = useState('')
   const [selectedTodoIds, setSelectedTodoIds] = useState<Set<string>>(new Set())
   const [isMobile, setIsMobile] = useState(false)
 
@@ -122,6 +123,8 @@ export default function Home() {
   const dragOverItem = useRef<string | null>(null)
   const calendarRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef(0)
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null)
+  const isLongPress = useRef(false)
 
   const getWeekDates = useCallback((date: Date) => {
     const d = new Date(date)
@@ -251,6 +254,7 @@ export default function Home() {
 
   const toggleTodo = async (todo: Todo) => {
     setTodos(prev => prev.map(t => t.id === todo.id ? { ...t, done: !t.done } : t))
+    await fetchWeeklyData(selectedDate)
     await fetch('/api/todos', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -328,14 +332,18 @@ export default function Home() {
     setLoadingRoutine(true)
     try {
       const dateStr = toDateStr(selectedDate)
-      for (const r of ROUTINES) {
+      const response = await fetch('/api/routines')
+      const data = await response.json()
+      const routinesToLoad = data.routines || []
+
+      for (const r of routinesToLoad) {
         const res = await fetch('/api/todos', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title: r.title, category: r.category, date: dateStr, logId: dailyLog?.id })
         })
-        const data = await res.json()
-        if (data.todo) setTodos(prev => [...prev, data.todo])
+        const resData = await res.json()
+        if (resData.todo) setTodos(prev => [...prev, resData.todo])
       }
     } finally {
       setLoadingRoutine(false)
@@ -446,18 +454,17 @@ export default function Home() {
     }
   }
 
-  const updateCategoryColor = async (id: string, color: string) => {
+  const updateCategory = async (id: string, name?: string, color?: string) => {
     try {
       const res = await fetch('/api/categories', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, color })
+        body: JSON.stringify({ id, name, color })
       })
       const data = await res.json()
       if (data.ok) {
-        setCategories(prev => prev.map(c => c.id === id ? { ...c, color } : c))
-        setEditingCategoryId(null)
         await fetchCategories()
+        setEditingCategoryId(null)
       }
     } catch (e) {
       console.error(e)
@@ -711,6 +718,39 @@ export default function Home() {
                 <div className={styles.empty}>할일이 없어요</div>
               ) : todos.map(todo => {
                 const editing = editingTodoId === todo.id
+                const isSelected = selectedTodoIds.has(todo.id)
+
+                const handleTodoMouseDown = (e: React.MouseEvent) => {
+                  if (isMobile && !editing) {
+                    e.preventDefault()
+                    if (longPressTimer.current) clearTimeout(longPressTimer.current)
+                    isLongPress.current = false
+                    longPressTimer.current = setTimeout(() => {
+                      isLongPress.current = true
+                      toggleTodoSelection(todo.id)
+                    }, 500)
+                  }
+                }
+
+                const handleTodoMouseUp = () => {
+                  if (longPressTimer.current) clearTimeout(longPressTimer.current)
+                }
+
+                const handleTodoTouchStart = (e: React.TouchEvent) => {
+                  if (isMobile && !editing) {
+                    if (longPressTimer.current) clearTimeout(longPressTimer.current)
+                    isLongPress.current = false
+                    longPressTimer.current = setTimeout(() => {
+                      isLongPress.current = true
+                      toggleTodoSelection(todo.id)
+                    }, 500)
+                  }
+                }
+
+                const handleTodoTouchEnd = () => {
+                  if (longPressTimer.current) clearTimeout(longPressTimer.current)
+                }
+
                 return (
                   <div
                     key={todo.id}
@@ -719,18 +759,17 @@ export default function Home() {
                       todo.done ? styles.todoDone : '',
                       draggedId === todo.id ? styles.todoItemDragging : '',
                       editing ? styles.todoItemEditing : '',
-                      selectedTodoIds.has(todo.id) ? styles.todoItemSelected : '',
+                      isSelected ? styles.todoItemSelected : '',
                     ].join(' ')}
-                    draggable={!isEditing && !isMobile}
+                    draggable={!isEditing && (!isMobile || isSelected)}
                     onDragStart={e => handleDragStart(e, todo.id)}
                     onDragEnter={() => handleDragEnter(todo.id)}
                     onDragOver={e => e.preventDefault()}
                     onDragEnd={handleDragEnd}
-                    onClick={() => {
-                      if (isMobile && !editing) {
-                        toggleTodoSelection(todo.id)
-                      }
-                    }}
+                    onMouseDown={handleTodoMouseDown}
+                    onMouseUp={handleTodoMouseUp}
+                    onTouchStart={handleTodoTouchStart}
+                    onTouchEnd={handleTodoTouchEnd}
                   >
                     {/* Drag handle */}
                     {!isMobile && (
@@ -749,7 +788,10 @@ export default function Home() {
                     {/* Checkbox */}
                     <button
                       className={styles.checkbox}
-                      onClick={() => toggleTodo(todo)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleTodo(todo)
+                      }}
                       style={editing ? { alignSelf: 'flex-start', marginTop: 4 } : undefined}
                     >
                       {todo.done ? '✓' : ''}
@@ -873,7 +915,6 @@ export default function Home() {
                 const data = await res.json()
                 if (data.log) {
                   setDailyLog(data.log)
-                  window.open(data.log.notionUrl, '_blank')
                 }
               }}>
                 + 오늘 기록 만들기
@@ -1035,15 +1076,15 @@ export default function Home() {
                       <div className={styles.tabPlaceholder}>등록된 업무구분이 없어요</div>
                     ) : categories.map(category => (
                       <div key={category.id} className={styles.categoryItem}>
-                        <div className={styles.categoryNameSection}>
-                          <span
-                            className={styles.categoryColorDot}
-                            style={{ background: getCategoryBgColor(category.color) }}
-                          />
-                          <span className={styles.categoryName}>{category.name}</span>
-                        </div>
                         {editingCategoryId === category.id ? (
                           <div className={styles.categoryEditForm}>
+                            <input
+                              type="text"
+                              className={styles.categoryInput}
+                              value={editingCategoryName}
+                              onChange={e => setEditingCategoryName(e.target.value)}
+                              placeholder="이름"
+                            />
                             <select
                               className={styles.colorSelect}
                               value={editingCategoryColor}
@@ -1053,19 +1094,29 @@ export default function Home() {
                                 <option key={color} value={color}>{color}</option>
                               ))}
                             </select>
-                            <button className={styles.categorySaveBtn} onClick={() => updateCategoryColor(category.id, editingCategoryColor)}>저장</button>
+                            <button className={styles.categorySaveBtn} onClick={() => updateCategory(category.id, editingCategoryName || category.name, editingCategoryColor)}>저장</button>
                             <button className={styles.categoryCancelBtn} onClick={() => setEditingCategoryId(null)}>취소</button>
                           </div>
                         ) : (
-                          <button
-                            className={styles.categoryEditBtn}
-                            onClick={() => {
-                              setEditingCategoryId(category.id)
-                              setEditingCategoryColor(category.color)
-                            }}
-                          >
-                            색상 변경
-                          </button>
+                          <>
+                            <div className={styles.categoryNameSection}>
+                              <span
+                                className={styles.categoryColorDot}
+                                style={{ background: getCategoryBgColor(category.color) }}
+                              />
+                              <span className={styles.categoryName}>{category.name}</span>
+                            </div>
+                            <button
+                              className={styles.categoryEditBtn}
+                              onClick={() => {
+                                setEditingCategoryId(category.id)
+                                setEditingCategoryName(category.name)
+                                setEditingCategoryColor(category.color)
+                              }}
+                            >
+                              수정
+                            </button>
+                          </>
                         )}
                       </div>
                     ))}

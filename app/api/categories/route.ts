@@ -65,9 +65,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const { id, color } = await req.json()
+  const { id, name, color } = await req.json()
 
-  if (!NOTION_COLORS.includes(color)) {
+  if (color && !NOTION_COLORS.includes(color)) {
     return NextResponse.json({ error: 'Invalid color' }, { status: 400 })
   }
 
@@ -79,9 +79,15 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Category property not found' }, { status: 400 })
     }
 
-    const updatedOptions = categoryProp.select.options.map((opt: any) =>
-      opt.id === id ? { ...opt, color } : opt
-    )
+    const updatedOptions = categoryProp.select.options.map((opt: any) => {
+      if (opt.id === id) {
+        const updated: any = { ...opt }
+        if (name) updated.name = name
+        if (color) updated.color = color
+        return updated
+      }
+      return opt
+    })
 
     await notion.databases.update({
       database_id: TODO_DB_ID,
