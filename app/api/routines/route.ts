@@ -19,23 +19,27 @@ export async function GET() {
       database_id: ROUTINE_DB_ID,
     })
 
-    console.log('Routine DB query result:', response.results.length, 'items')
+    const routines = response.results
+      .filter((page: any) => page.object === 'page')
+      .map((page: any) => {
+        const props = page.properties || {}
+        const titleProp = props['할일'] || props['할 일'] || props['Name'] || props['이름']
+        return {
+          id: page.id,
+          title: titleProp?.title?.[0]?.plain_text || '',
+          category: props['업무구분']?.select?.name || '',
+          order: props['순서']?.number ?? 0,
+        }
+      })
 
-    const routines = response.results.map((page: any) => {
-      const props = page.properties
-      return {
-        id: page.id,
-        title: props['할일']?.title?.[0]?.plain_text || '',
-        category: props['업무구분']?.select?.name || '',
-        order: props['순서']?.number || 0,
-      }
-    })
-
-    console.log('Parsed routines:', routines)
     return NextResponse.json({ routines: routines.sort((a, b) => a.order - b.order) })
   } catch (e: any) {
-    console.error('Routine API error:', e.message)
-    return NextResponse.json({ error: e.message, routines: [] }, { status: 500 })
+    console.error('Routine API error:', e.message, e.code)
+    return NextResponse.json({
+      error: e.message,
+      code: e.code,
+      routines: []
+    }, { status: 500 })
   }
 }
 
@@ -48,11 +52,14 @@ export async function POST(req: NextRequest) {
     const response = await notion.databases.query({
       database_id: ROUTINE_DB_ID,
     })
-    const maxOrder = Math.max(...response.results.map((p: any) => p.properties['순서']?.number || 0), 0)
+    const orders = response.results.map((p: any) => p.properties['순서']?.number ?? 0).filter((n: any) => typeof n === 'number')
+    const maxOrder = orders.length > 0 ? Math.max(...orders) : 0
 
     const properties: any = {
       '할일': { title: [{ text: { content: title } }] },
-      '순서': { number: order ?? maxOrder + 1 },
+    }
+    if (typeof (order ?? maxOrder + 1) === 'number') {
+      properties['순서'] = { number: order ?? maxOrder + 1 }
     }
     if (category) {
       properties['업무구분'] = { select: { name: category } }

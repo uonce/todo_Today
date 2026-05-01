@@ -64,9 +64,11 @@ export async function POST(req: NextRequest) {
   const { title, category, date, logId } = await req.json()
   const properties: any = {
     '할 일': { title: [{ text: { content: title } }] },
-    '업무구분': { select: { name: category } },
     '날짜': { date: { start: date } },
     '': { checkbox: false }
+  }
+  if (category) {
+    properties['업무구분'] = { select: { name: category } }
   }
   if (logId) {
     const relProp = await getDailyLogRelationProp()
