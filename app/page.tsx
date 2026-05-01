@@ -124,6 +124,8 @@ export default function Home() {
   const dragOverItem = useRef<string | null>(null)
   const calendarRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
+  const touchDragActive = useRef(false)
   const longPressTimer = useRef<NodeJS.Timeout | null>(null)
   const isLongPress = useRef(false)
 
@@ -706,35 +708,32 @@ export default function Home() {
                   </>
                 )}
                 {isMobile && selectedTodoIds.size === 0 && (
-                  <button
-                    className={`${styles.addTodoToggleBtn} ${showAddForm ? styles.addTodoToggleBtnActive : ''}`}
-                    onClick={() => {
-                      setShowAddForm(v => !v)
-                      setNewTodo('')
-                      if (!showAddForm && todoMode === 'normal') {
-                        setTodoMode('adding')
-                      } else {
-                        setTodoMode('normal')
-                      }
-                    }}
-                  >
-                    +
-                  </button>
+                  <>
+                    <button
+                      className={styles.routineBtn}
+                      onClick={loadRoutine}
+                      disabled={loadingRoutine}
+                    >
+                      {loadingRoutine ? '...' : '루틴'}
+                    </button>
+                    <button
+                      className={`${styles.addTodoToggleBtn} ${showAddForm ? styles.addTodoToggleBtnActive : ''}`}
+                      onClick={() => {
+                        setShowAddForm(v => !v)
+                        setNewTodo('')
+                        if (!showAddForm && todoMode === 'normal') {
+                          setTodoMode('adding')
+                        } else {
+                          setTodoMode('normal')
+                        }
+                      }}
+                    >
+                      +
+                    </button>
+                  </>
                 )}
               </div>
             </div>
-
-            {/* Mobile routine button */}
-            {isMobile && selectedTodoIds.size === 0 && (
-              <button
-                className={styles.routineBtn}
-                onClick={loadRoutine}
-                disabled={loadingRoutine}
-                style={{ width: '100%', marginBottom: '8px' }}
-              >
-                {loadingRoutine ? '추가 중...' : '루틴 불러오기'}
-              </button>
-            )}
 
             {/* Add todo form */}
             {showAddForm && (
@@ -761,7 +760,15 @@ export default function Home() {
             )}
 
             {/* Todo list */}
-            <div className={styles.todoList}>
+            <div
+              className={styles.todoList}
+              onClick={e => {
+                if (isMobile && todoMode === 'selecting' && e.target === e.currentTarget) {
+                  setSelectedTodoIds(new Set())
+                  setTodoMode('normal')
+                }
+              }}
+            >
               {loading ? (
                 <div className={styles.empty}>불러오는 중...</div>
               ) : todos.length === 0 ? (
@@ -770,41 +777,55 @@ export default function Home() {
                 const editing = editingTodoId === todo.id
                 const isSelected = selectedTodoIds.has(todo.id)
 
-                const handleTodoMouseDown = (e: React.MouseEvent) => {
-                  if (!isMobile || editing || todoMode === 'adding' || todoMode === 'editing') return
-                  e.preventDefault()
-                  if (longPressTimer.current) clearTimeout(longPressTimer.current)
-                  isLongPress.current = false
-                  if (todoMode === 'normal') {
-                    longPressTimer.current = setTimeout(() => {
-                      isLongPress.current = true
-                      toggleTodoSelection(todo.id)
-                    }, 500)
-                  }
-                }
-
-                const handleTodoMouseUp = (e: React.MouseEvent) => {
-                  if (longPressTimer.current) clearTimeout(longPressTimer.current)
-                  if (isMobile && todoMode === 'selecting' && !isLongPress.current) {
-                    e.preventDefault()
-                    toggleTodoSelection(todo.id)
-                  }
-                }
-
                 const handleTodoTouchStart = (e: React.TouchEvent) => {
                   if (!isMobile || editing || todoMode === 'adding' || todoMode === 'editing') return
-                  if (longPressTimer.current) clearTimeout(longPressTimer.current)
+                  const touch = e.touches[0]
+                  touchStartX.current = touch.clientX
+                  touchStartY.current = touch.clientY
+                  touchDragActive.current = false
                   isLongPress.current = false
+                  if (longPressTimer.current) clearTimeout(longPressTimer.current)
                   if (todoMode === 'normal') {
                     longPressTimer.current = setTimeout(() => {
-                      isLongPress.current = true
-                      toggleTodoSelection(todo.id)
-                    }, 500)
+                      if (!touchDragActive.current) {
+                        isLongPress.current = true
+                        toggleTodoSelection(todo.id)
+                      }
+                    }, 600)
+                  }
+                }
+
+                const handleTodoTouchMove = (e: React.TouchEvent) => {
+                  if (!isMobile || editing || todoMode === 'adding' || todoMode === 'editing') return
+                  const touch = e.touches[0]
+                  const dx = touch.clientX - touchStartX.current
+                  const dy = touch.clientY - touchStartY.current
+                  const dist = Math.sqrt(dx * dx + dy * dy)
+                  if (!touchDragActive.current && dist > 8 && todoMode !== 'selecting') {
+                    touchDragActive.current = true
+                    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null }
+                    dragItem.current = todo.id
+                    dragOverItem.current = null
+                    setDraggedId(todo.id)
+                  }
+                  if (touchDragActive.current) {
+                    e.preventDefault()
+                    const el = document.elementFromPoint(touch.clientX, touch.clientY)
+                    const todoEl = el?.closest('[data-todo-id]') as HTMLElement | null
+                    if (todoEl) {
+                      const targetId = todoEl.dataset.todoId
+                      if (targetId && targetId !== dragItem.current) handleDragEnter(targetId)
+                    }
                   }
                 }
 
                 const handleTodoTouchEnd = (e: React.TouchEvent) => {
                   if (longPressTimer.current) clearTimeout(longPressTimer.current)
+                  if (touchDragActive.current) {
+                    touchDragActive.current = false
+                    handleDragEnd()
+                    return
+                  }
                   if (isMobile && todoMode === 'selecting' && !isLongPress.current) {
                     e.preventDefault()
                     toggleTodoSelection(todo.id)
@@ -814,6 +835,7 @@ export default function Home() {
                 return (
                   <div
                     key={todo.id}
+                    data-todo-id={todo.id}
                     className={[
                       styles.todoItem,
                       todo.done ? styles.todoDone : '',
@@ -821,14 +843,13 @@ export default function Home() {
                       editing ? styles.todoItemEditing : '',
                       isSelected ? styles.todoItemSelected : '',
                     ].join(' ')}
-                    draggable={!isEditing && (!isMobile || isSelected)}
+                    draggable={!isEditing && !isMobile}
                     onDragStart={e => handleDragStart(e, todo.id)}
                     onDragEnter={() => handleDragEnter(todo.id)}
                     onDragOver={e => e.preventDefault()}
                     onDragEnd={handleDragEnd}
-                    onMouseDown={isMobile ? handleTodoMouseDown : undefined}
-                    onMouseUp={isMobile ? handleTodoMouseUp : undefined}
                     onTouchStart={isMobile ? handleTodoTouchStart : undefined}
+                    onTouchMove={isMobile ? handleTodoTouchMove : undefined}
                     onTouchEnd={isMobile ? handleTodoTouchEnd : undefined}
                   >
                     {/* Drag handle */}

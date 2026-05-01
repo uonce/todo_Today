@@ -1342,6 +1342,13 @@
     gap: 8px;
     flex-wrap: wrap;
     user-select: none;
+    touch-action: pan-y;
+  }
+
+  .todoItemDragging {
+    touch-action: none;
+    opacity: 0.5;
+    border-style: dashed;
   }
 
   .dragHandle {
