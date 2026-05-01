@@ -1379,31 +1379,55 @@
 
   /* Mobile add form */
   .addTodoRow {
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-direction: column;
+    gap: 8px;
   }
 
   .categoryInput {
     padding: 6px 8px;
     font-size: 12px;
-    width: 70px;
+    width: 100%;
   }
 
   .addTodoInput {
     padding: 6px 10px;
     font-size: 12px;
+    width: 100%;
   }
 
   .addTodoBtn {
-    width: 32px;
-    height: 32px;
+    width: 100%;
+    height: 36px;
   }
 
   /* Mobile edit form */
+  .todoEditArea {
+    width: 100%;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .todoEditTopRow {
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+  }
+
   .editTitleInput,
   .editCategoryInput {
     font-size: 12px;
     padding: 6px 8px;
+    width: 100%;
+  }
+
+  .editNoteInput {
+    width: 100%;
+  }
+
+  .todoEditActions {
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 6px;
   }
 
   /* Mobile settings modal */
