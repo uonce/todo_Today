@@ -617,7 +617,11 @@ export default function Home() {
               })}
             </div>
 
-            <div className={styles.weeklyCard}>
+            <div
+              className={styles.weeklyCard}
+              onTouchStart={e => e.stopPropagation()}
+              onTouchEnd={e => e.stopPropagation()}
+            >
               <div className={styles.achievementTabsHeader}>
                 <button
                   className={`${styles.achievementTab} ${achievementTab === 'daily' ? styles.achievementTabActive : ''}`}
@@ -767,11 +771,11 @@ export default function Home() {
                 const isSelected = selectedTodoIds.has(todo.id)
 
                 const handleTodoMouseDown = (e: React.MouseEvent) => {
-                  if (isMobile && !editing && todoMode !== 'adding') {
-                    if (todoMode === 'selecting') return
-                    e.preventDefault()
-                    if (longPressTimer.current) clearTimeout(longPressTimer.current)
-                    isLongPress.current = false
+                  if (!isMobile || editing || todoMode === 'adding' || todoMode === 'editing') return
+                  e.preventDefault()
+                  if (longPressTimer.current) clearTimeout(longPressTimer.current)
+                  isLongPress.current = false
+                  if (todoMode === 'normal') {
                     longPressTimer.current = setTimeout(() => {
                       isLongPress.current = true
                       toggleTodoSelection(todo.id)
@@ -788,10 +792,10 @@ export default function Home() {
                 }
 
                 const handleTodoTouchStart = (e: React.TouchEvent) => {
-                  if (isMobile && !editing && todoMode !== 'adding') {
-                    if (todoMode === 'selecting') return
-                    if (longPressTimer.current) clearTimeout(longPressTimer.current)
-                    isLongPress.current = false
+                  if (!isMobile || editing || todoMode === 'adding' || todoMode === 'editing') return
+                  if (longPressTimer.current) clearTimeout(longPressTimer.current)
+                  isLongPress.current = false
+                  if (todoMode === 'normal') {
                     longPressTimer.current = setTimeout(() => {
                       isLongPress.current = true
                       toggleTodoSelection(todo.id)

@@ -355,9 +355,9 @@
 }
 
 .todoItemSelected {
-  background: #f5f2ec;
-  border-color: #3d3328;
-  box-shadow: inset 0 0 0 1.5px #3d3328;
+  background: #ddd5c6;
+  border-color: #7c6f5a;
+  box-shadow: 0 0 0 2px #7c6f5a;
 }
 
 .dragHandle {
@@ -1389,6 +1389,7 @@
   .addTodoRow {
     flex-direction: row;
     gap: 6px;
+    overflow: hidden;
   }
 
   .categoryInput {
@@ -1396,12 +1397,16 @@
     font-size: 12px;
     width: 70px;
     min-width: 70px;
+    flex-shrink: 0;
+    box-sizing: border-box;
   }
 
   .addTodoInput {
     padding: 8px 12px;
     font-size: 12px;
     flex: 1;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   .addTodoBtn {
@@ -1427,6 +1432,7 @@
     flex-direction: row;
     gap: 6px;
     width: 100%;
+    overflow: hidden;
   }
 
   .editCategoryInput {
@@ -1434,12 +1440,16 @@
     padding: 8px 10px;
     width: 80px;
     min-width: 80px;
+    flex-shrink: 0;
+    box-sizing: border-box;
   }
 
   .editTitleInput {
     font-size: 13px;
     padding: 8px 10px;
     flex: 1;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   .editNoteInput {
@@ -1447,6 +1457,7 @@
     font-size: 12px;
     padding: 8px 10px;
     min-height: 40px;
+    box-sizing: border-box;
   }
 
   .todoEditActions {
