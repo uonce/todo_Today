@@ -1329,6 +1329,8 @@
 
   .rightSection {
     padding: 24px 20px;
+    overflow: hidden;
+    min-width: 0;
   }
 
   .historyMain {
@@ -1343,6 +1345,8 @@
     flex-wrap: wrap;
     user-select: none;
     touch-action: pan-y;
+    overflow: hidden;
+    min-width: 0;
   }
 
   .todoItemDragging {
@@ -1395,76 +1399,88 @@
   /* Mobile add form */
   .addTodoRow {
     flex-direction: row;
-    gap: 6px;
+    flex-wrap: nowrap;
+    gap: 4px;
     overflow: hidden;
+    width: 100%;
   }
 
   .categoryInput {
-    padding: 8px 10px;
+    padding: 6px 8px;
     font-size: 12px;
-    width: 70px;
-    min-width: 70px;
+    width: 64px;
+    min-width: 64px;
+    max-width: 64px;
     flex-shrink: 0;
     box-sizing: border-box;
   }
 
   .addTodoInput {
-    padding: 8px 12px;
+    padding: 6px 8px;
     font-size: 12px;
     flex: 1;
     min-width: 0;
+    max-width: 100%;
     box-sizing: border-box;
   }
 
   .addTodoBtn {
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    flex-shrink: 0;
   }
 
   /* Mobile edit form */
   .todoItem.todoItemEditing {
     flex-direction: column;
     align-items: stretch;
-    padding: 12px;
+    padding: 10px;
+    overflow: hidden;
   }
 
   .todoEditArea {
     width: 100%;
+    max-width: 100%;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
+    min-width: 0;
   }
 
   .todoEditTopRow {
     flex-direction: row;
-    gap: 6px;
+    flex-wrap: nowrap;
+    gap: 4px;
     width: 100%;
     overflow: hidden;
   }
 
   .editCategoryInput {
     font-size: 12px;
-    padding: 8px 10px;
-    width: 80px;
-    min-width: 80px;
+    padding: 6px 8px;
+    width: 64px;
+    min-width: 64px;
+    max-width: 64px;
     flex-shrink: 0;
     box-sizing: border-box;
   }
 
   .editTitleInput {
-    font-size: 13px;
-    padding: 8px 10px;
+    font-size: 12px;
+    padding: 6px 8px;
     flex: 1;
     min-width: 0;
+    max-width: 100%;
     box-sizing: border-box;
   }
 
   .editNoteInput {
     width: 100%;
     font-size: 12px;
-    padding: 8px 10px;
-    min-height: 40px;
+    padding: 6px 8px;
+    min-height: 36px;
     box-sizing: border-box;
+    max-width: 100%;
   }
 
   .todoEditActions {
