@@ -37,7 +37,7 @@ export default function LoginPage() {
       <div className={styles.card}>
         <div className={styles.logo}>
           <span className={styles.logoIcon}>✦</span>
-          <span className={styles.logoText}>daily</span>
+          <span className={styles.logoText}>오늘할일</span>
         </div>
         <form className={styles.form} onSubmit={handleSubmit}>
           <input
