@@ -1164,7 +1164,7 @@
   margin-bottom: 20px;
 }
 
-.categoryInput {
+.modalCategoryInput {
   flex: 1;
   padding: 8px 12px;
   border: 1.5px solid #e0dbd1;
@@ -1176,7 +1176,7 @@
   outline: none;
 }
 
-.categoryInput:focus {
+.modalCategoryInput:focus {
   border-color: #7c6f5a;
 }
 
@@ -1496,7 +1496,7 @@
   }
 
   .routineInput,
-  .categoryInput {
+  .modalCategoryInput {
     min-width: 120px;
   }
 

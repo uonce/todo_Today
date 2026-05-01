@@ -1110,7 +1110,7 @@ export default function Home() {
                   <div className={styles.categoryInputRow}>
                     <input
                       type="text"
-                      className={styles.categoryInput}
+                      className={styles.modalCategoryInput}
                       placeholder="업무구분 이름"
                       value={newCategoryName}
                       onChange={e => setNewCategoryName(e.target.value)}
@@ -1136,7 +1136,7 @@ export default function Home() {
                           <div className={styles.categoryEditForm}>
                             <input
                               type="text"
-                              className={styles.categoryInput}
+                              className={styles.modalCategoryInput}
                               value={editingCategoryName}
                               onChange={e => setEditingCategoryName(e.target.value)}
                               placeholder="이름"
