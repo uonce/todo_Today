@@ -1334,7 +1334,14 @@
     -webkit-user-select: none;
   }
 
-  :global(input), :global(textarea), :global(select) {
+  .categoryInput,
+  .addTodoInput,
+  .editCategoryInput,
+  .editTitleInput,
+  .editNoteInput,
+  .routineInput,
+  .modalCategoryInput,
+  .logTextarea {
     user-select: text;
     -webkit-user-select: text;
   }
