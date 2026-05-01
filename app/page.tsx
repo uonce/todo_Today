@@ -117,6 +117,7 @@ export default function Home() {
   const [selectedTodoIds, setSelectedTodoIds] = useState<Set<string>>(new Set())
   const [isMobile, setIsMobile] = useState(false)
   const [todoMode, setTodoMode] = useState<'normal' | 'adding' | 'editing' | 'selecting'>('normal')
+  const [logDatesInMonth, setLogDatesInMonth] = useState<Set<string>>(new Set())
 
   const NOTION_COLORS = ['default', 'gray', 'brown', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'red']
 
@@ -229,6 +230,14 @@ export default function Home() {
     fetchData(selectedDate)
     fetchWeeklyData(selectedDate)
   }, [selectedDate])
+
+  useEffect(() => {
+    const month = `${calendarMonth.getFullYear()}-${String(calendarMonth.getMonth() + 1).padStart(2, '0')}`
+    fetch(`/api/daily-log?month=${month}`)
+      .then(r => r.json())
+      .then(data => { if (data.dates) setLogDatesInMonth(new Set(data.dates)) })
+      .catch(() => {})
+  }, [calendarMonth])
 
   useEffect(() => {
     if (view === 'history') fetchHistory()
@@ -609,10 +618,16 @@ export default function Home() {
                 const dateStr = `${calendarMonth.getFullYear()}-${String(calendarMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
                 const isToday = dateStr === todayStr
                 const isSelected = dateStr === selectedStr
+                const hasLog = logDatesInMonth.has(dateStr)
                 return (
                   <button
                     key={day}
-                    className={`${styles.calendarDay} ${isToday ? styles.calendarToday : ''} ${isSelected ? styles.calendarSelected : ''}`}
+                    className={[
+                      styles.calendarDay,
+                      isToday ? styles.calendarToday : '',
+                      isSelected ? styles.calendarSelected : '',
+                      hasLog ? styles.calendarHasLog : '',
+                    ].join(' ')}
                     onClick={() => setSelectedDate(new Date(dateStr + 'T12:00:00'))}
                   >
                     {day}
@@ -770,6 +785,7 @@ export default function Home() {
             {/* Todo list */}
             <div
               className={styles.todoList}
+              style={isMobile && draggedId ? { touchAction: 'none' } : undefined}
               onClick={e => {
                 if (isMobile && todoMode === 'selecting' && e.target === e.currentTarget) {
                   setSelectedTodoIds(new Set())
@@ -786,21 +802,24 @@ export default function Home() {
                 const isSelected = selectedTodoIds.has(todo.id)
 
                 const handleTodoTouchStart = (e: React.TouchEvent) => {
-                  if (!isMobile || editing || todoMode === 'adding' || todoMode === 'editing') return
                   const touch = e.touches[0]
                   touchStartX.current = touch.clientX
                   touchStartY.current = touch.clientY
+                  if (!isMobile || editing || todoMode === 'adding' || todoMode === 'editing') return
                   touchDragActive.current = false
                   isLongPress.current = false
                   if (longPressTimer.current) clearTimeout(longPressTimer.current)
-                  if (todoMode === 'normal') {
-                    longPressTimer.current = setTimeout(() => {
-                      if (!touchDragActive.current) {
-                        isLongPress.current = true
-                        toggleTodoSelection(todo.id)
-                      }
-                    }, 600)
-                  }
+                  longPressTimer.current = setTimeout(() => {
+                    if (!touchDragActive.current) {
+                      isLongPress.current = true
+                      touchDragActive.current = true
+                      dragItem.current = todo.id
+                      dragOverItem.current = null
+                      setDraggedId(todo.id)
+                      document.body.style.overflow = 'hidden'
+                      if (navigator.vibrate) navigator.vibrate(50)
+                    }
+                  }, 600)
                 }
 
                 const handleTodoTouchMove = (e: React.TouchEvent) => {
@@ -809,12 +828,9 @@ export default function Home() {
                   const dx = touch.clientX - touchStartX.current
                   const dy = touch.clientY - touchStartY.current
                   const dist = Math.sqrt(dx * dx + dy * dy)
-                  if (!touchDragActive.current && dist > 8 && todoMode !== 'selecting') {
-                    touchDragActive.current = true
-                    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null }
-                    dragItem.current = todo.id
-                    dragOverItem.current = null
-                    setDraggedId(todo.id)
+                  if (!isLongPress.current && dist > 8 && longPressTimer.current) {
+                    clearTimeout(longPressTimer.current)
+                    longPressTimer.current = null
                   }
                   if (touchDragActive.current) {
                     e.preventDefault()
@@ -831,24 +847,25 @@ export default function Home() {
                   if (longPressTimer.current) clearTimeout(longPressTimer.current)
                   if (touchDragActive.current) {
                     touchDragActive.current = false
+                    isLongPress.current = false
+                    document.body.style.overflow = ''
                     handleDragEnd()
                     return
                   }
-                  if (!isMobile || isLongPress.current) return
+                  if (!isMobile) return
 
                   const touch = e.changedTouches[0]
                   const dx = touch.clientX - touchStartX.current
                   const dy = Math.abs(touch.clientY - touchStartY.current)
                   const isShortTap = Math.abs(dx) < 20 && dy < 20
                   const isRightSwipe = dx > 60 && dy < 40
+                  const isLeftSwipe = dx < -60 && dy < 40
 
-                  if (todoMode === 'selecting') {
-                    if (isShortTap) {
+                  if (todoMode === 'normal') {
+                    if (isLeftSwipe && !editing) {
                       e.preventDefault()
-                      toggleTodoSelection(todo.id)
-                    }
-                  } else if (todoMode === 'normal') {
-                    if (isRightSwipe && !editing) {
+                      deleteTodo(todo.id)
+                    } else if (isRightSwipe && !editing) {
                       e.preventDefault()
                       startEditTodo(todo)
                     } else if (isShortTap) {
@@ -878,7 +895,7 @@ export default function Home() {
                     onDragOver={e => e.preventDefault()}
                     onDragEnd={handleDragEnd}
                     onTouchStart={isMobile ? handleTodoTouchStart : undefined}
-                    onTouchMove={undefined}
+                    onTouchMove={isMobile ? handleTodoTouchMove : undefined}
                     onTouchEnd={isMobile ? handleTodoTouchEnd : undefined}
                   >
                     {/* Drag handle */}
@@ -924,7 +941,7 @@ export default function Home() {
                             onChange={e => setEditTodoTitle(e.target.value)}
                             onKeyDown={e => {
                               if (e.key === 'Enter') updateTodo()
-                              if (e.key === 'Escape') setEditingTodoId(null)
+                              if (e.key === 'Escape') { setEditingTodoId(null); setTodoMode('normal') }
                             }}
                             autoFocus
                           />
@@ -936,11 +953,11 @@ export default function Home() {
                           placeholder="비고 (선택사항)"
                           onKeyDown={e => {
                             if (e.key === 'Enter') updateTodo()
-                            if (e.key === 'Escape') setEditingTodoId(null)
+                            if (e.key === 'Escape') { setEditingTodoId(null); setTodoMode('normal') }
                           }}
                         />
                         <div className={styles.todoEditActions}>
-                          <button className={styles.editCancelBtn} onClick={() => setEditingTodoId(null)}>취소</button>
+                          <button className={styles.editCancelBtn} onClick={() => { setEditingTodoId(null); setTodoMode('normal') }}>취소</button>
                           <button className={styles.editSaveBtn} onClick={updateTodo}>저장</button>
                         </div>
                       </div>
@@ -952,7 +969,7 @@ export default function Home() {
                         >
                           {todo.category}
                         </span>
-                        <span className={styles.todoTitle} onClick={() => startEditTodo(todo)}>
+                        <span className={styles.todoTitle} onClick={!isMobile ? () => startEditTodo(todo) : undefined}>
                           {todo.title}
                         </span>
                         {todo.note && <span className={styles.todoNote}>{todo.note}</span>}

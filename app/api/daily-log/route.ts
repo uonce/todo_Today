@@ -18,8 +18,29 @@ function formatLog(page: any) {
 export async function GET(req: NextRequest) {
   const date = req.nextUrl.searchParams.get('date')
   const all = req.nextUrl.searchParams.get('all')
+  const month = req.nextUrl.searchParams.get('month') // 'YYYY-MM'
 
   try {
+    if (month) {
+      const [year, mon] = month.split('-')
+      const startDate = `${year}-${mon}-01`
+      const lastDay = new Date(Number(year), Number(mon), 0).getDate()
+      const endDate = `${year}-${mon}-${String(lastDay).padStart(2, '0')}`
+      const response = await notion.databases.query({
+        database_id: DAILY_LOG_DB_ID,
+        filter: {
+          and: [
+            { property: '날짜', date: { on_or_after: startDate } },
+            { property: '날짜', date: { on_or_before: endDate } }
+          ]
+        }
+      })
+      const dates = response.results
+        .map((p: any) => p.properties['날짜']?.date?.start)
+        .filter(Boolean)
+      return NextResponse.json({ dates })
+    }
+
     if (all) {
       const response = await notion.databases.query({
         database_id: DAILY_LOG_DB_ID,
