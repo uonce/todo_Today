@@ -165,6 +165,37 @@
   border: 1.5px solid #e0dbd1;
 }
 
+.achievementTabsHeader {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  border-bottom: 1.5px solid #e0dbd1;
+  padding-bottom: 8px;
+}
+
+.achievementTab {
+  flex: 1;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: #9a8e7c;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.achievementTab:hover {
+  color: #7c6f5a;
+}
+
+.achievementTabActive {
+  color: #3d3328;
+  border-bottom-color: #3d3328;
+}
+
 .weeklyTitle {
   font-size: 13px;
   color: #7c6f5a;
@@ -323,6 +354,12 @@
   border-style: dashed;
 }
 
+.todoItemSelected {
+  background: #f5f2ec;
+  border-color: #3d3328;
+  box-shadow: inset 0 0 0 1.5px #3d3328;
+}
+
 .dragHandle {
   color: #c8bfb0;
   cursor: grab;
@@ -456,6 +493,25 @@
   color: #ef4444;
 }
 
+.deleteSelectedBtn {
+  padding: 5px 12px;
+  border: 1.5px solid #ef4444;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #ef4444;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.deleteSelectedBtn:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
 .editCategoryInput {
   padding: 4px 8px;
   border: 1.5px solid #c8bfb0;
@@ -517,6 +573,9 @@
   font-size: 12px;
   color: #9a8e7c;
   flex-shrink: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .addTodoRow {
@@ -794,6 +853,459 @@
   flex-shrink: 0;
 }
 
+/* Settings Button */
+.settingsBtn {
+  width: 100%;
+  height: 36px;
+  border: 1.5px solid #e0dbd1;
+  border-radius: 10px;
+  background: #fff;
+  color: #7c6f5a;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  transition: all 0.2s;
+}
+
+.settingsBtn:hover {
+  border-color: #7c6f5a;
+  color: #3d3328;
+  background: #faf8f3;
+}
+
+/* Modal */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modalContent {
+  background: #fff;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  border: 1.5px solid #e0dbd1;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+  border-bottom: 1.5px solid #e0dbd1;
+  position: sticky;
+  top: 0;
+  background: #fff;
+}
+
+.modalTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: #3d3328;
+  margin: 0;
+  font-family: 'Gowun Dodum', sans-serif;
+}
+
+.modalClose {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: #9a8e7c;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.modalClose:hover {
+  color: #3d3328;
+}
+
+.modalTabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1.5px solid #e0dbd1;
+  padding: 0 24px;
+}
+
+.modalTab {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  color: #9a8e7c;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.modalTab:hover {
+  color: #7c6f5a;
+}
+
+.modalTabActive {
+  color: #3d3328;
+  border-bottom-color: #3d3328;
+}
+
+.modalTabContent {
+  padding: 24px;
+  min-height: 300px;
+}
+
+.routineSettingsTab,
+.categorySettingsTab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tabPlaceholder {
+  color: #9a8e7c;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+/* Routine Settings */
+.routineInputRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.routineInput {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1.5px solid #e0dbd1;
+  border-radius: 8px;
+  background: #fff;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 14px;
+  color: #3d3328;
+  outline: none;
+}
+
+.routineInput:focus {
+  border-color: #7c6f5a;
+}
+
+.routineCategorySelect {
+  padding: 8px 10px;
+  border: 1.5px solid #e0dbd1;
+  border-radius: 8px;
+  background: #fff;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 12px;
+  color: #3d3328;
+  outline: none;
+}
+
+.routineCategorySelect:focus {
+  border-color: #7c6f5a;
+}
+
+.routineAddBtn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #3d3328;
+  color: #f5f2ec;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.routineAddBtn:hover {
+  background: #7c6f5a;
+}
+
+.routineList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.routineItem {
+  padding: 12px 16px;
+  border: 1.5px solid #e0dbd1;
+  border-radius: 10px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s;
+}
+
+.routineItem:hover {
+  border-color: #c8bfb0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.routineInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.routineTitle {
+  font-size: 14px;
+  color: #3d3328;
+  flex: 1;
+}
+
+.routineBadge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  color: #3d3328;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.routineActions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.routineEditBtn,
+.routineDeleteBtn {
+  padding: 4px 10px;
+  border: 1px solid #e0dbd1;
+  border-radius: 6px;
+  background: transparent;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.routineEditBtn:hover {
+  border-color: #7c6f5a;
+  color: #7c6f5a;
+}
+
+.routineDeleteBtn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.routineEditForm {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+
+.routineEditForm .routineInput,
+.routineEditForm .routineCategorySelect {
+  margin: 0;
+}
+
+.routineSaveBtn,
+.routineCancelBtn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 6px;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.routineSaveBtn {
+  background: #3d3328;
+  color: #f5f2ec;
+}
+
+.routineSaveBtn:hover {
+  background: #7c6f5a;
+}
+
+.routineCancelBtn {
+  background: transparent;
+  color: #9a8e7c;
+  border: 1px solid #e0dbd1;
+}
+
+.routineCancelBtn:hover {
+  color: #3d3328;
+  border-color: #7c6f5a;
+}
+
+/* Category Settings */
+.categoryInputRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.categoryInput {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1.5px solid #e0dbd1;
+  border-radius: 8px;
+  background: #fff;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 14px;
+  color: #3d3328;
+  outline: none;
+}
+
+.categoryInput:focus {
+  border-color: #7c6f5a;
+}
+
+.colorSelect {
+  padding: 8px 10px;
+  border: 1.5px solid #e0dbd1;
+  border-radius: 8px;
+  background: #fff;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 12px;
+  color: #3d3328;
+  outline: none;
+}
+
+.colorSelect:focus {
+  border-color: #7c6f5a;
+}
+
+.categoryAddBtn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #3d3328;
+  color: #f5f2ec;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.categoryAddBtn:hover {
+  background: #7c6f5a;
+}
+
+.categoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.categoryItem {
+  padding: 12px 16px;
+  border: 1.5px solid #e0dbd1;
+  border-radius: 10px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s;
+}
+
+.categoryItem:hover {
+  border-color: #c8bfb0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.categoryNameSection {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.categoryColorDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.categoryName {
+  font-size: 14px;
+  color: #3d3328;
+}
+
+.categoryEditBtn {
+  padding: 4px 10px;
+  border: 1px solid #e0dbd1;
+  border-radius: 6px;
+  background: transparent;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.categoryEditBtn:hover {
+  border-color: #7c6f5a;
+  color: #7c6f5a;
+}
+
+.categoryEditForm {
+  display: flex;
+  gap: 6px;
+}
+
+.categorySaveBtn,
+.categoryCancelBtn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 6px;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.categorySaveBtn {
+  background: #3d3328;
+  color: #f5f2ec;
+}
+
+.categorySaveBtn:hover {
+  background: #7c6f5a;
+}
+
+.categoryCancelBtn {
+  background: transparent;
+  color: #9a8e7c;
+  border: 1px solid #e0dbd1;
+}
+
+.categoryCancelBtn:hover {
+  color: #3d3328;
+  border-color: #7c6f5a;
+}
+
 /* Mobile responsive */
 @media (max-width: 768px) {
   .header {
@@ -820,5 +1332,131 @@
 
   .historyMain {
     padding: 24px 20px;
+  }
+
+  /* Mobile todo layout */
+  .todoItem {
+    padding: 10px 10px;
+    cursor: pointer;
+    gap: 6px;
+  }
+
+  .dragHandle {
+    display: none !important;
+  }
+
+  .deleteBtn {
+    display: none !important;
+  }
+
+  .checkbox {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    margin-top: 2px;
+  }
+
+  .categoryBadge {
+    font-size: 9px;
+    padding: 1px 5px;
+    min-width: fit-content;
+    margin-right: auto;
+  }
+
+  .todoTitle {
+    font-size: 12px;
+    min-width: 100px;
+    flex: 1;
+  }
+
+  .todoNote {
+    font-size: 11px;
+    width: 100%;
+    margin-top: 4px;
+    margin-left: calc(16px + 6px);
+    order: 10;
+  }
+
+  /* Mobile add form */
+  .addTodoRow {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .categoryInput {
+    padding: 6px 8px;
+    font-size: 12px;
+    width: 70px;
+  }
+
+  .addTodoInput {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .addTodoBtn {
+    width: 32px;
+    height: 32px;
+  }
+
+  /* Mobile edit form */
+  .editTitleInput,
+  .editCategoryInput {
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+
+  /* Mobile settings modal */
+  .modalContent {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .routineInputRow,
+  .categoryInputRow {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .routineInput,
+  .categoryInput {
+    min-width: 120px;
+  }
+
+  .routineCategorySelect,
+  .colorSelect {
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .routineAddBtn,
+  .categoryAddBtn {
+    width: 100%;
+  }
+
+  /* Mobile achievement tabs */
+  .achievementTab {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+
+  /* Mobile settings button */
+  .settingsBtn {
+    height: 32px;
+    margin-top: 8px;
+  }
+
+  /* Modal on mobile */
+  .modalOverlay {
+    padding: 16px;
+  }
+
+  .modalContent {
+    border-radius: 12px;
+  }
+
+  .modalTabContent {
+    padding: 16px;
+    min-height: 200px;
   }
 }

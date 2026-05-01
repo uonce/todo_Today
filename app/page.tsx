@@ -22,6 +22,19 @@ interface DailyLog {
   completionRate: number
 }
 
+interface Routine {
+  id: string
+  title: string
+  category: string
+  order: number
+}
+
+interface Category {
+  id: string
+  name: string
+  color: string
+}
+
 function formatDate(date: Date) {
   return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
 }
@@ -31,6 +44,22 @@ function toDateStr(date: Date) {
   const m = String(date.getMonth() + 1).padStart(2, '0')
   const d = String(date.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
+}
+
+function getCategoryBgColor(color: string): string {
+  const colorMap: Record<string, string> = {
+    default: '#e5e7eb',
+    gray: '#d1d5db',
+    brown: '#d2691e',
+    orange: '#fdba74',
+    yellow: '#fcd34d',
+    green: '#86efac',
+    blue: '#93c5fd',
+    purple: '#d8b4fe',
+    pink: '#f9a8d4',
+    red: '#fca5a5',
+  }
+  return colorMap[color] || '#e5e7eb'
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -68,9 +97,62 @@ export default function Home() {
   const [savingLog, setSavingLog] = useState(false)
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [loadingRoutine, setLoadingRoutine] = useState(false)
+  const [achievementTab, setAchievementTab] = useState<'daily' | 'weekly'>('daily')
+  const [weeklyDaysTodos, setWeeklyDaysTodos] = useState<Record<string, Todo[]>>({})
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [settingsTab, setSettingsTab] = useState<'routine' | 'category'>('routine')
+  const [routines, setRoutines] = useState<Routine[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loadingRoutines, setLoadingRoutines] = useState(false)
+  const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null)
+  const [editRoutineTitle, setEditRoutineTitle] = useState('')
+  const [editRoutineCategory, setEditRoutineCategory] = useState('')
+  const [newRoutineTitle, setNewRoutineTitle] = useState('')
+  const [newRoutineCategory, setNewRoutineCategory] = useState('')
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [newCategoryColor, setNewCategoryColor] = useState('default')
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
+  const [editingCategoryColor, setEditingCategoryColor] = useState('default')
+  const [selectedTodoIds, setSelectedTodoIds] = useState<Set<string>>(new Set())
+  const [isMobile, setIsMobile] = useState(false)
+
+  const NOTION_COLORS = ['default', 'gray', 'brown', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'red']
 
   const dragItem = useRef<string | null>(null)
   const dragOverItem = useRef<string | null>(null)
+  const calendarRef = useRef<HTMLDivElement>(null)
+  const touchStartX = useRef(0)
+
+  const getWeekDates = useCallback((date: Date) => {
+    const d = new Date(date)
+    const day = d.getDay()
+    const diff = d.getDate() - day
+    const weekStart = new Date(d.setDate(diff))
+    const weekDates = []
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(weekStart)
+      date.setDate(weekStart.getDate() + i)
+      weekDates.push(toDateStr(date))
+    }
+    return weekDates
+  }, [])
+
+  const fetchWeeklyData = useCallback(async (date: Date) => {
+    try {
+      const weekDates = getWeekDates(date)
+      const results: Record<string, Todo[]> = {}
+      await Promise.all(
+        weekDates.map(async (dateStr) => {
+          const res = await fetch(`/api/todos?date=${dateStr}`)
+          const data = await res.json()
+          results[dateStr] = data.todos || []
+        })
+      )
+      setWeeklyDaysTodos(results)
+    } catch (e) {
+      console.error(e)
+    }
+  }, [getWeekDates])
 
   const fetchData = useCallback(async (date: Date) => {
     setLoading(true)
@@ -101,13 +183,71 @@ export default function Home() {
     }
   }, [])
 
+  const fetchRoutines = useCallback(async () => {
+    setLoadingRoutines(true)
+    try {
+      const res = await fetch('/api/routines')
+      const data = await res.json()
+      setRoutines(data.routines || [])
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoadingRoutines(false)
+    }
+  }, [])
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await fetch('/api/categories')
+      const data = await res.json()
+      setCategories(data.categories || [])
+    } catch (e) {
+      console.error(e)
+    }
+  }, [])
+
   useEffect(() => {
     fetchData(selectedDate)
-  }, [selectedDate, fetchData])
+    fetchWeeklyData(selectedDate)
+  }, [selectedDate, fetchData, fetchWeeklyData])
 
   useEffect(() => {
     if (view === 'history') fetchHistory()
   }, [view, fetchHistory])
+
+  useEffect(() => {
+    if (showSettingsModal) {
+      fetchRoutines()
+      fetchCategories()
+    }
+  }, [showSettingsModal, fetchRoutines, fetchCategories])
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const handleCalendarTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  const handleCalendarTouchEnd = (e: React.TouchEvent) => {
+    const touchEndX = e.changedTouches[0].clientX
+    const diff = touchStartX.current - touchEndX
+    const threshold = 50
+
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0) {
+        setCalendarMonth(d => new Date(d.getFullYear(), d.getMonth() + 1))
+      } else {
+        setCalendarMonth(d => new Date(d.getFullYear(), d.getMonth() - 1))
+      }
+    }
+  }
 
   const toggleTodo = async (todo: Todo) => {
     setTodos(prev => prev.map(t => t.id === todo.id ? { ...t, done: !t.done } : t))
@@ -125,6 +265,25 @@ export default function Home() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id })
     })
+  }
+
+  const toggleTodoSelection = (id: string) => {
+    setSelectedTodoIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
+  }
+
+  const deleteSelectedTodos = async () => {
+    for (const id of selectedTodoIds) {
+      await deleteTodo(id)
+    }
+    setSelectedTodoIds(new Set())
   }
 
   const startEditTodo = (todo: Todo) => {
@@ -210,6 +369,101 @@ export default function Home() {
     setDraggedId(null)
   }
 
+  const addRoutine = async () => {
+    if (!newRoutineTitle.trim()) return
+    try {
+      const res = await fetch('/api/routines', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newRoutineTitle,
+          category: newRoutineCategory
+        })
+      })
+      const data = await res.json()
+      if (data.routine) {
+        setRoutines(prev => [...prev, data.routine])
+        setNewRoutineTitle('')
+        setNewRoutineCategory('')
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const updateRoutine = async (id: string) => {
+    if (!editRoutineTitle.trim()) return
+    try {
+      await fetch('/api/routines', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          title: editRoutineTitle,
+          category: editRoutineCategory
+        })
+      })
+      setRoutines(prev => prev.map(r => r.id === id ? { ...r, title: editRoutineTitle, category: editRoutineCategory } : r))
+      setEditingRoutineId(null)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const deleteRoutine = async (id: string) => {
+    try {
+      await fetch('/api/routines', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      })
+      setRoutines(prev => prev.filter(r => r.id !== id))
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const addCategory = async () => {
+    if (!newCategoryName.trim()) return
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newCategoryName,
+          color: newCategoryColor
+        })
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setCategories(prev => [...prev, { id: '', name: newCategoryName, color: newCategoryColor }])
+        setNewCategoryName('')
+        setNewCategoryColor('default')
+        await fetchCategories()
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const updateCategoryColor = async (id: string, color: string) => {
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, color })
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setCategories(prev => prev.map(c => c.id === id ? { ...c, color } : c))
+        setEditingCategoryId(null)
+        await fetchCategories()
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   const saveLog = async () => {
     if (!dailyLog) return
     setSavingLog(true)
@@ -226,9 +480,32 @@ export default function Home() {
     }
   }
 
-  const completedCount = todos.filter(t => t.done).length
-  const totalCount = todos.length
-  const completionPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+  const calculateAchievement = (todoList: Todo[]) => {
+    const completed = todoList.filter(t => t.done).length
+    const total = todoList.length
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0
+    return { completed, total, percentage }
+  }
+
+  const dailyAchievement = calculateAchievement(todos)
+
+  const weeklyAchievement = (() => {
+    let totalCompleted = 0, totalCount = 0
+    Object.values(weeklyDaysTodos).forEach(dayTodos => {
+      const completed = dayTodos.filter(t => t.done).length
+      totalCompleted += completed
+      totalCount += dayTodos.length
+    })
+    return {
+      completed: totalCompleted,
+      total: totalCount,
+      percentage: totalCount > 0 ? Math.round((totalCompleted / totalCount) * 100) : 0
+    }
+  })()
+
+  const completedCount = dailyAchievement.completed
+  const totalCount = dailyAchievement.total
+  const completionPct = dailyAchievement.percentage
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear()
@@ -262,7 +539,12 @@ export default function Home() {
       {view === 'today' ? (
         <main className={styles.main}>
           {/* Left: Calendar */}
-          <section className={styles.calendarSection}>
+          <section
+            className={styles.calendarSection}
+            ref={calendarRef}
+            onTouchStart={handleCalendarTouchStart}
+            onTouchEnd={handleCalendarTouchEnd}
+          >
             <div className={styles.calendarHeader}>
               <button onClick={() => setCalendarMonth(d => new Date(d.getFullYear(), d.getMonth() - 1))} className={styles.monthBtn}>‹</button>
               <span className={styles.monthLabel}>{calendarMonth.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' })}</span>
@@ -291,15 +573,49 @@ export default function Home() {
             </div>
 
             <div className={styles.weeklyCard}>
-              <div className={styles.weeklyTitle}>주간 달성도</div>
-              <div className={styles.weeklyBar}>
-                <div className={styles.weeklyFill} style={{ width: `${completionPct}%` }} />
+              <div className={styles.achievementTabsHeader}>
+                <button
+                  className={`${styles.achievementTab} ${achievementTab === 'daily' ? styles.achievementTabActive : ''}`}
+                  onClick={() => setAchievementTab('daily')}
+                >
+                  일간 달성도
+                </button>
+                <button
+                  className={`${styles.achievementTab} ${achievementTab === 'weekly' ? styles.achievementTabActive : ''}`}
+                  onClick={() => setAchievementTab('weekly')}
+                >
+                  주간 달성도
+                </button>
               </div>
-              <div className={styles.weeklyStats}>
-                <span>{completedCount}/{totalCount} 완료</span>
-                <span className={styles.weeklyPct}>{completionPct}%</span>
-              </div>
+              {achievementTab === 'daily' ? (
+                <>
+                  <div className={styles.weeklyBar}>
+                    <div className={styles.weeklyFill} style={{ width: `${dailyAchievement.percentage}%` }} />
+                  </div>
+                  <div className={styles.weeklyStats}>
+                    <span>{dailyAchievement.completed}/{dailyAchievement.total} 완료</span>
+                    <span className={styles.weeklyPct}>{dailyAchievement.percentage}%</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className={styles.weeklyBar}>
+                    <div className={styles.weeklyFill} style={{ width: `${weeklyAchievement.percentage}%` }} />
+                  </div>
+                  <div className={styles.weeklyStats}>
+                    <span>{weeklyAchievement.completed}/{weeklyAchievement.total} 완료</span>
+                    <span className={styles.weeklyPct}>{weeklyAchievement.percentage}%</span>
+                  </div>
+                </>
+              )}
             </div>
+
+            <button className={styles.settingsBtn} onClick={() => setShowSettingsModal(true)} title="설정">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m3.08 3.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m3.08-3.08l4.24-4.24" />
+              </svg>
+            </button>
           </section>
 
           {/* Right: Todos + Daily Log */}
@@ -315,21 +631,53 @@ export default function Home() {
                 {toDateStr(selectedDate) === todayStr ? '오늘의 할일' : `${selectedDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} 할일`}
               </div>
               <div className={styles.sectionActions}>
-                <button
-                  className={styles.routineBtn}
-                  onClick={loadRoutine}
-                  disabled={loadingRoutine}
-                >
-                  {loadingRoutine ? '추가 중...' : '루틴 불러오기'}
-                </button>
-                <button
-                  className={`${styles.addTodoToggleBtn} ${showAddForm ? styles.addTodoToggleBtnActive : ''}`}
-                  onClick={() => { setShowAddForm(v => !v); setNewTodo('') }}
-                >
-                  +
-                </button>
+                {isMobile && selectedTodoIds.size > 0 && (
+                  <button
+                    className={styles.deleteSelectedBtn}
+                    onClick={deleteSelectedTodos}
+                  >
+                    삭제 ({selectedTodoIds.size})
+                  </button>
+                )}
+                {!isMobile && (
+                  <>
+                    <button
+                      className={styles.routineBtn}
+                      onClick={loadRoutine}
+                      disabled={loadingRoutine}
+                    >
+                      {loadingRoutine ? '추가 중...' : '루틴 불러오기'}
+                    </button>
+                    <button
+                      className={`${styles.addTodoToggleBtn} ${showAddForm ? styles.addTodoToggleBtnActive : ''}`}
+                      onClick={() => { setShowAddForm(v => !v); setNewTodo('') }}
+                    >
+                      +
+                    </button>
+                  </>
+                )}
+                {isMobile && selectedTodoIds.size === 0 && (
+                  <button
+                    className={`${styles.addTodoToggleBtn} ${showAddForm ? styles.addTodoToggleBtnActive : ''}`}
+                    onClick={() => { setShowAddForm(v => !v); setNewTodo('') }}
+                  >
+                    +
+                  </button>
+                )}
               </div>
             </div>
+
+            {/* Mobile routine button */}
+            {isMobile && selectedTodoIds.size === 0 && (
+              <button
+                className={styles.routineBtn}
+                onClick={loadRoutine}
+                disabled={loadingRoutine}
+                style={{ width: '100%', marginBottom: '8px' }}
+              >
+                {loadingRoutine ? '추가 중...' : '루틴 불러오기'}
+              </button>
+            )}
 
             {/* Add todo form */}
             {showAddForm && (
@@ -371,24 +719,32 @@ export default function Home() {
                       todo.done ? styles.todoDone : '',
                       draggedId === todo.id ? styles.todoItemDragging : '',
                       editing ? styles.todoItemEditing : '',
+                      selectedTodoIds.has(todo.id) ? styles.todoItemSelected : '',
                     ].join(' ')}
-                    draggable={!isEditing}
+                    draggable={!isEditing && !isMobile}
                     onDragStart={e => handleDragStart(e, todo.id)}
                     onDragEnter={() => handleDragEnter(todo.id)}
                     onDragOver={e => e.preventDefault()}
                     onDragEnd={handleDragEnd}
+                    onClick={() => {
+                      if (isMobile && !editing) {
+                        toggleTodoSelection(todo.id)
+                      }
+                    }}
                   >
                     {/* Drag handle */}
-                    <span className={styles.dragHandle}>
-                      <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor">
-                        <circle cx="4" cy="3" r="1.5" />
-                        <circle cx="4" cy="8" r="1.5" />
-                        <circle cx="4" cy="13" r="1.5" />
-                        <circle cx="8" cy="3" r="1.5" />
-                        <circle cx="8" cy="8" r="1.5" />
-                        <circle cx="8" cy="13" r="1.5" />
-                      </svg>
-                    </span>
+                    {!isMobile && (
+                      <span className={styles.dragHandle}>
+                        <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor">
+                          <circle cx="4" cy="3" r="1.5" />
+                          <circle cx="4" cy="8" r="1.5" />
+                          <circle cx="4" cy="13" r="1.5" />
+                          <circle cx="8" cy="3" r="1.5" />
+                          <circle cx="8" cy="8" r="1.5" />
+                          <circle cx="8" cy="13" r="1.5" />
+                        </svg>
+                      </span>
+                    )}
 
                     {/* Checkbox */}
                     <button
@@ -451,17 +807,19 @@ export default function Home() {
                     )}
 
                     {/* Delete button */}
-                    <button
-                      className={styles.deleteBtn}
-                      onClick={() => deleteTodo(todo.id)}
-                      title="삭제"
-                      style={editing ? { alignSelf: 'flex-start', marginTop: 2 } : undefined}
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                      </svg>
-                    </button>
+                    {!isMobile && (
+                      <button
+                        className={styles.deleteBtn}
+                        onClick={() => deleteTodo(todo.id)}
+                        title="삭제"
+                        style={editing ? { alignSelf: 'flex-start', marginTop: 2 } : undefined}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 )
               })}
@@ -543,6 +901,180 @@ export default function Home() {
             ))}
           </div>
         </main>
+      )}
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowSettingsModal(false)}>
+          <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>설정</h2>
+              <button className={styles.modalClose} onClick={() => setShowSettingsModal(false)}>✕</button>
+            </div>
+
+            <div className={styles.modalTabs}>
+              <button
+                className={`${styles.modalTab} ${settingsTab === 'routine' ? styles.modalTabActive : ''}`}
+                onClick={() => setSettingsTab('routine')}
+              >
+                루틴 설정
+              </button>
+              <button
+                className={`${styles.modalTab} ${settingsTab === 'category' ? styles.modalTabActive : ''}`}
+                onClick={() => setSettingsTab('category')}
+              >
+                업무구분 설정
+              </button>
+            </div>
+
+            <div className={styles.modalTabContent}>
+              {settingsTab === 'routine' ? (
+                <div className={styles.routineSettingsTab}>
+                  <div className={styles.routineInputRow}>
+                    <input
+                      type="text"
+                      className={styles.routineInput}
+                      placeholder="루틴 이름"
+                      value={newRoutineTitle}
+                      onChange={e => setNewRoutineTitle(e.target.value)}
+                    />
+                    <select
+                      className={styles.routineCategorySelect}
+                      value={newRoutineCategory}
+                      onChange={e => setNewRoutineCategory(e.target.value)}
+                    >
+                      <option value="">업무구분 선택</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                      ))}
+                    </select>
+                    <button className={styles.routineAddBtn} onClick={addRoutine}>추가</button>
+                  </div>
+
+                  <div className={styles.routineList}>
+                    {loadingRoutines ? (
+                      <div className={styles.tabPlaceholder}>불러오는 중...</div>
+                    ) : routines.length === 0 ? (
+                      <div className={styles.tabPlaceholder}>등록된 루틴이 없어요</div>
+                    ) : routines.map(routine => (
+                      <div key={routine.id} className={styles.routineItem}>
+                        {editingRoutineId === routine.id ? (
+                          <div className={styles.routineEditForm}>
+                            <input
+                              type="text"
+                              className={styles.routineInput}
+                              value={editRoutineTitle}
+                              onChange={e => setEditRoutineTitle(e.target.value)}
+                            />
+                            <select
+                              className={styles.routineCategorySelect}
+                              value={editRoutineCategory}
+                              onChange={e => setEditRoutineCategory(e.target.value)}
+                            >
+                              <option value="">업무구분 선택</option>
+                              {categories.map(cat => (
+                                <option key={cat.id} value={cat.name}>{cat.name}</option>
+                              ))}
+                            </select>
+                            <button className={styles.routineSaveBtn} onClick={() => updateRoutine(routine.id)}>저장</button>
+                            <button className={styles.routineCancelBtn} onClick={() => setEditingRoutineId(null)}>취소</button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className={styles.routineInfo}>
+                              <span className={styles.routineTitle}>{routine.title}</span>
+                              {routine.category && (
+                                <span
+                                  className={styles.routineBadge}
+                                  style={{
+                                    background: categories.find(c => c.name === routine.category)?.color || '#e5e7eb'
+                                  }}
+                                >
+                                  {routine.category}
+                                </span>
+                              )}
+                            </div>
+                            <div className={styles.routineActions}>
+                              <button className={styles.routineEditBtn} onClick={() => {
+                                setEditingRoutineId(routine.id)
+                                setEditRoutineTitle(routine.title)
+                                setEditRoutineCategory(routine.category)
+                              }}>편집</button>
+                              <button className={styles.routineDeleteBtn} onClick={() => deleteRoutine(routine.id)}>삭제</button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className={styles.categorySettingsTab}>
+                  <div className={styles.categoryInputRow}>
+                    <input
+                      type="text"
+                      className={styles.categoryInput}
+                      placeholder="업무구분 이름"
+                      value={newCategoryName}
+                      onChange={e => setNewCategoryName(e.target.value)}
+                    />
+                    <select
+                      className={styles.colorSelect}
+                      value={newCategoryColor}
+                      onChange={e => setNewCategoryColor(e.target.value)}
+                    >
+                      {NOTION_COLORS.map(color => (
+                        <option key={color} value={color}>{color}</option>
+                      ))}
+                    </select>
+                    <button className={styles.categoryAddBtn} onClick={addCategory}>추가</button>
+                  </div>
+
+                  <div className={styles.categoryList}>
+                    {categories.length === 0 ? (
+                      <div className={styles.tabPlaceholder}>등록된 업무구분이 없어요</div>
+                    ) : categories.map(category => (
+                      <div key={category.id} className={styles.categoryItem}>
+                        <div className={styles.categoryNameSection}>
+                          <span
+                            className={styles.categoryColorDot}
+                            style={{ background: getCategoryBgColor(category.color) }}
+                          />
+                          <span className={styles.categoryName}>{category.name}</span>
+                        </div>
+                        {editingCategoryId === category.id ? (
+                          <div className={styles.categoryEditForm}>
+                            <select
+                              className={styles.colorSelect}
+                              value={editingCategoryColor}
+                              onChange={e => setEditingCategoryColor(e.target.value)}
+                            >
+                              {NOTION_COLORS.map(color => (
+                                <option key={color} value={color}>{color}</option>
+                              ))}
+                            </select>
+                            <button className={styles.categorySaveBtn} onClick={() => updateCategoryColor(category.id, editingCategoryColor)}>저장</button>
+                            <button className={styles.categoryCancelBtn} onClick={() => setEditingCategoryId(null)}>취소</button>
+                          </div>
+                        ) : (
+                          <button
+                            className={styles.categoryEditBtn}
+                            onClick={() => {
+                              setEditingCategoryId(category.id)
+                              setEditingCategoryColor(category.color)
+                            }}
+                          >
+                            색상 변경
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
