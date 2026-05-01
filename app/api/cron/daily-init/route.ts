@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Client } from '@notionhq/client'
 
+export const dynamic = 'force-dynamic'
+
 const notion = new Client({ auth: process.env.NOTION_TOKEN })
 const TODO_DB_ID = process.env.TODO_DB_ID!
 const DAILY_LOG_DB_ID = process.env.DAILY_LOG_DB_ID!
