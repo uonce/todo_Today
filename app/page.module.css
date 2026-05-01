@@ -1336,9 +1336,11 @@
 
   /* Mobile todo layout */
   .todoItem {
-    padding: 10px 10px;
+    padding: 12px 14px;
     cursor: pointer;
-    gap: 6px;
+    gap: 8px;
+    flex-wrap: wrap;
+    user-select: none;
   }
 
   .dragHandle {
@@ -1350,84 +1352,134 @@
   }
 
   .checkbox {
-    width: 16px;
-    height: 16px;
-    min-width: 16px;
-    margin-top: 2px;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    margin-top: 0;
+    flex-shrink: 0;
   }
 
   .categoryBadge {
-    font-size: 9px;
-    padding: 1px 5px;
+    font-size: 11px;
+    padding: 2px 8px;
     min-width: fit-content;
-    margin-right: auto;
+    flex-shrink: 0;
   }
 
   .todoTitle {
-    font-size: 12px;
+    font-size: 14px;
     min-width: 100px;
     flex: 1;
+    user-select: text;
   }
 
   .todoNote {
-    font-size: 11px;
-    width: 100%;
-    margin-top: 4px;
-    margin-left: calc(16px + 6px);
+    font-size: 12px;
+    width: calc(100% - 20px - 8px);
+    margin-top: 6px;
+    margin-left: 28px;
     order: 10;
+    white-space: pre-wrap;
+    word-break: break-word;
+    user-select: text;
   }
 
   /* Mobile add form */
   .addTodoRow {
+    flex-direction: row;
+    gap: 6px;
+  }
+
+  .categoryInput {
+    padding: 8px 10px;
+    font-size: 12px;
+    width: 70px;
+    min-width: 70px;
+  }
+
+  .addTodoInput {
+    padding: 8px 12px;
+    font-size: 12px;
+    flex: 1;
+  }
+
+  .addTodoBtn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+  }
+
+  /* Mobile edit form */
+  .todoItem.todoItemEditing {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+  }
+
+  .todoEditArea {
+    width: 100%;
     flex-direction: column;
     gap: 8px;
   }
 
-  .categoryInput {
-    padding: 6px 8px;
-    font-size: 12px;
-    width: 100%;
-  }
-
-  .addTodoInput {
-    padding: 6px 10px;
-    font-size: 12px;
-    width: 100%;
-  }
-
-  .addTodoBtn {
-    width: 100%;
-    height: 36px;
-  }
-
-  /* Mobile edit form */
-  .todoEditArea {
-    width: 100%;
-    flex-direction: column;
-    gap: 6px;
-  }
-
   .todoEditTopRow {
-    flex-direction: column;
+    flex-direction: row;
     gap: 6px;
     width: 100%;
   }
 
-  .editTitleInput,
   .editCategoryInput {
     font-size: 12px;
-    padding: 6px 8px;
-    width: 100%;
+    padding: 8px 10px;
+    width: 80px;
+    min-width: 80px;
+  }
+
+  .editTitleInput {
+    font-size: 13px;
+    padding: 8px 10px;
+    flex: 1;
   }
 
   .editNoteInput {
     width: 100%;
+    font-size: 12px;
+    padding: 8px 10px;
+    min-height: 40px;
   }
 
   .todoEditActions {
     flex-direction: row;
     justify-content: flex-end;
     gap: 6px;
+    margin-top: 4px;
+  }
+
+  .editSaveBtn,
+  .editCancelBtn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  /* Mobile calendar */
+  .calendarGrid {
+    gap: 6px;
+  }
+
+  .calendarDay {
+    font-size: 15px;
+  }
+
+  .monthLabel {
+    font-size: 16px;
+  }
+
+  .calendarDayLabel {
+    font-size: 13px;
+  }
+
+  .monthBtn {
+    font-size: 24px;
   }
 
   /* Mobile settings modal */

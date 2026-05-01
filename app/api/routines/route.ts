@@ -20,9 +20,6 @@ export async function GET() {
     })
 
     console.log('Routine DB query result:', response.results.length, 'items')
-    if (response.results.length > 0) {
-      console.log('First item properties:', Object.keys(response.results[0].properties))
-    }
 
     const routines = response.results.map((page: any) => {
       const props = page.properties

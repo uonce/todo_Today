@@ -116,6 +116,7 @@ export default function Home() {
   const [editingCategoryName, setEditingCategoryName] = useState('')
   const [selectedTodoIds, setSelectedTodoIds] = useState<Set<string>>(new Set())
   const [isMobile, setIsMobile] = useState(false)
+  const [todoMode, setTodoMode] = useState<'normal' | 'adding' | 'editing' | 'selecting'>('normal')
 
   const NOTION_COLORS = ['default', 'gray', 'brown', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'red']
 
@@ -213,10 +214,19 @@ export default function Home() {
     }
   }, [])
 
+  const resetAllModes = () => {
+    setShowAddForm(false)
+    setEditingTodoId(null)
+    setSelectedTodoIds(new Set())
+    setTodoMode('normal')
+    setNewTodo('')
+  }
+
   useEffect(() => {
+    resetAllModes()
     fetchData(selectedDate)
     fetchWeeklyData(selectedDate)
-  }, [selectedDate, fetchData, fetchWeeklyData])
+  }, [selectedDate])
 
   useEffect(() => {
     if (view === 'history') fetchHistory()
@@ -257,8 +267,19 @@ export default function Home() {
   }
 
   const toggleTodo = async (todo: Todo) => {
-    setTodos(prev => prev.map(t => t.id === todo.id ? { ...t, done: !t.done } : t))
-    await fetchWeeklyData(selectedDate)
+    const updatedTodos = todos.map(t => t.id === todo.id ? { ...t, done: !t.done } : t)
+    setTodos(updatedTodos)
+
+    const weekDates = getWeekDates(selectedDate)
+    const newWeeklyData = { ...weeklyDaysTodos }
+    const todoDateIndex = weekDates.indexOf(todo.date)
+    if (todoDateIndex !== -1) {
+      newWeeklyData[todo.date] = (newWeeklyData[todo.date] || []).map(t =>
+        t.id === todo.id ? { ...t, done: !t.done } : t
+      )
+      setWeeklyDaysTodos(newWeeklyData)
+    }
+
     await fetch('/api/todos', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -276,12 +297,19 @@ export default function Home() {
   }
 
   const toggleTodoSelection = (id: string) => {
+    if (todoMode === 'adding' || todoMode === 'editing') return
+
     setSelectedTodoIds(prev => {
       const newSet = new Set(prev)
       if (newSet.has(id)) {
         newSet.delete(id)
       } else {
         newSet.add(id)
+      }
+      if (newSet.size > 0 && todoMode === 'normal') {
+        setTodoMode('selecting')
+      } else if (newSet.size === 0) {
+        setTodoMode('normal')
       }
       return newSet
     })
@@ -292,13 +320,16 @@ export default function Home() {
       await deleteTodo(id)
     }
     setSelectedTodoIds(new Set())
+    setTodoMode('normal')
   }
 
   const startEditTodo = (todo: Todo) => {
+    if (todoMode === 'selecting' || todoMode === 'adding') return
     setEditingTodoId(todo.id)
     setEditTodoTitle(todo.title)
     setEditTodoCategory(todo.category)
     setEditTodoNote(todo.note)
+    setTodoMode('editing')
   }
 
   const updateTodo = async () => {
@@ -306,6 +337,7 @@ export default function Home() {
     const id = editingTodoId
     setTodos(prev => prev.map(t => t.id === id ? { ...t, title: editTodoTitle, category: editTodoCategory, note: editTodoNote } : t))
     setEditingTodoId(null)
+    setTodoMode('normal')
     await fetch('/api/todos', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -326,6 +358,8 @@ export default function Home() {
       if (data.todo) {
         setTodos(prev => [...prev, data.todo])
         setNewTodo('')
+        setShowAddForm(false)
+        setTodoMode('normal')
       }
     } finally {
       setAddingTodo(false)
@@ -670,7 +704,31 @@ export default function Home() {
                 {isMobile && selectedTodoIds.size === 0 && (
                   <button
                     className={`${styles.addTodoToggleBtn} ${showAddForm ? styles.addTodoToggleBtnActive : ''}`}
-                    onClick={() => { setShowAddForm(v => !v); setNewTodo('') }}
+                    onClick={() => {
+                      setShowAddForm(v => !v)
+                      setNewTodo('')
+                      if (!showAddForm && todoMode === 'normal') {
+                        setTodoMode('adding')
+                      } else {
+                        setTodoMode('normal')
+                      }
+                    }}
+                  >
+                    +
+                  </button>
+                )}
+                {!isMobile && selectedTodoIds.size === 0 && (
+                  <button
+                    className={`${styles.addTodoToggleBtn} ${showAddForm ? styles.addTodoToggleBtnActive : ''}`}
+                    onClick={() => {
+                      setShowAddForm(v => !v)
+                      setNewTodo('')
+                      if (!showAddForm && todoMode === 'normal') {
+                        setTodoMode('adding')
+                      } else {
+                        setTodoMode('normal')
+                      }
+                    }}
                   >
                     +
                   </button>
@@ -725,7 +783,8 @@ export default function Home() {
                 const isSelected = selectedTodoIds.has(todo.id)
 
                 const handleTodoMouseDown = (e: React.MouseEvent) => {
-                  if (isMobile && !editing) {
+                  if (isMobile && !editing && todoMode !== 'adding') {
+                    if (todoMode === 'selecting') return
                     e.preventDefault()
                     if (longPressTimer.current) clearTimeout(longPressTimer.current)
                     isLongPress.current = false
@@ -736,12 +795,17 @@ export default function Home() {
                   }
                 }
 
-                const handleTodoMouseUp = () => {
+                const handleTodoMouseUp = (e: React.MouseEvent) => {
                   if (longPressTimer.current) clearTimeout(longPressTimer.current)
+                  if (isMobile && todoMode === 'selecting' && !isLongPress.current) {
+                    e.preventDefault()
+                    toggleTodoSelection(todo.id)
+                  }
                 }
 
                 const handleTodoTouchStart = (e: React.TouchEvent) => {
-                  if (isMobile && !editing) {
+                  if (isMobile && !editing && todoMode !== 'adding') {
+                    if (todoMode === 'selecting') return
                     if (longPressTimer.current) clearTimeout(longPressTimer.current)
                     isLongPress.current = false
                     longPressTimer.current = setTimeout(() => {
@@ -751,8 +815,12 @@ export default function Home() {
                   }
                 }
 
-                const handleTodoTouchEnd = () => {
+                const handleTodoTouchEnd = (e: React.TouchEvent) => {
                   if (longPressTimer.current) clearTimeout(longPressTimer.current)
+                  if (isMobile && todoMode === 'selecting' && !isLongPress.current) {
+                    e.preventDefault()
+                    toggleTodoSelection(todo.id)
+                  }
                 }
 
                 return (
@@ -770,10 +838,10 @@ export default function Home() {
                     onDragEnter={() => handleDragEnter(todo.id)}
                     onDragOver={e => e.preventDefault()}
                     onDragEnd={handleDragEnd}
-                    onMouseDown={handleTodoMouseDown}
-                    onMouseUp={handleTodoMouseUp}
-                    onTouchStart={handleTodoTouchStart}
-                    onTouchEnd={handleTodoTouchEnd}
+                    onMouseDown={isMobile ? handleTodoMouseDown : undefined}
+                    onMouseUp={isMobile ? handleTodoMouseUp : undefined}
+                    onTouchStart={isMobile ? handleTodoTouchStart : undefined}
+                    onTouchEnd={isMobile ? handleTodoTouchEnd : undefined}
                   >
                     {/* Drag handle */}
                     {!isMobile && (
