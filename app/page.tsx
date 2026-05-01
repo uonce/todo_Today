@@ -589,15 +589,17 @@ export default function Home() {
           <section
             className={styles.calendarSection}
             ref={calendarRef}
-            onTouchStart={handleCalendarTouchStart}
-            onTouchEnd={handleCalendarTouchEnd}
           >
             <div className={styles.calendarHeader}>
               <button onClick={() => setCalendarMonth(d => new Date(d.getFullYear(), d.getMonth() - 1))} className={styles.monthBtn}>‹</button>
               <span className={styles.monthLabel}>{calendarMonth.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' })}</span>
               <button onClick={() => setCalendarMonth(d => new Date(d.getFullYear(), d.getMonth() + 1))} className={styles.monthBtn}>›</button>
             </div>
-            <div className={styles.calendarGrid}>
+            <div
+              className={styles.calendarGrid}
+              onTouchStart={isMobile ? handleCalendarTouchStart : undefined}
+              onTouchEnd={isMobile ? handleCalendarTouchEnd : undefined}
+            >
               {['일','월','화','수','목','금','토'].map(d => (
                 <div key={d} className={styles.calendarDayLabel}>{d}</div>
               ))}
@@ -832,9 +834,30 @@ export default function Home() {
                     handleDragEnd()
                     return
                   }
-                  if (isMobile && todoMode === 'selecting' && !isLongPress.current) {
-                    e.preventDefault()
-                    toggleTodoSelection(todo.id)
+                  if (!isMobile || isLongPress.current) return
+
+                  const touch = e.changedTouches[0]
+                  const dx = touch.clientX - touchStartX.current
+                  const dy = Math.abs(touch.clientY - touchStartY.current)
+                  const isShortTap = Math.abs(dx) < 20 && dy < 20
+                  const isRightSwipe = dx > 60 && dy < 40
+
+                  if (todoMode === 'selecting') {
+                    if (isShortTap) {
+                      e.preventDefault()
+                      toggleTodoSelection(todo.id)
+                    }
+                  } else if (todoMode === 'normal') {
+                    if (isRightSwipe && !editing) {
+                      e.preventDefault()
+                      startEditTodo(todo)
+                    } else if (isShortTap) {
+                      const target = e.target as HTMLElement
+                      if (!target.closest('button')) {
+                        e.preventDefault()
+                        toggleTodo(todo)
+                      }
+                    }
                   }
                 }
 
@@ -879,6 +902,7 @@ export default function Home() {
                         e.stopPropagation()
                         toggleTodo(todo)
                       }}
+                      onTouchEnd={e => e.stopPropagation()}
                       style={editing ? { alignSelf: 'flex-start', marginTop: 4 } : undefined}
                     >
                       {todo.done ? '✓' : ''}
