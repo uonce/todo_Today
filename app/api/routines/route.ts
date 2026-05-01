@@ -40,13 +40,17 @@ export async function POST(req: NextRequest) {
     })
     const maxOrder = Math.max(...response.results.map((p: any) => p.properties['순서']?.number || 0), 0)
 
+    const properties: any = {
+      '제목': { title: [{ text: { content: title } }] },
+      '순서': { number: order ?? maxOrder + 1 },
+    }
+    if (category) {
+      properties['업무구분'] = { select: { name: category } }
+    }
+
     const page = await notion.pages.create({
       parent: { database_id: ROUTINE_DB_ID },
-      properties: {
-        '제목': { title: [{ text: { content: title } }] },
-        '업무구분': category ? { select: { name: category } } : undefined,
-        '순서': { number: order ?? maxOrder + 1 },
-      }
+      properties
     }) as any
 
     const routine = {
@@ -66,13 +70,19 @@ export async function PUT(req: NextRequest) {
   const { id, title, category, order } = await req.json()
 
   try {
+    const properties: any = {
+      '제목': { title: [{ text: { content: title } }] },
+    }
+    if (category) {
+      properties['업무구분'] = { select: { name: category } }
+    }
+    if (order !== undefined) {
+      properties['순서'] = { number: order }
+    }
+
     await notion.pages.update({
       page_id: id,
-      properties: {
-        '제목': { title: [{ text: { content: title } }] },
-        '업무구분': category ? { select: { name: category } } : { select: null },
-        '순서': order !== undefined ? { number: order } : undefined,
-      }
+      properties
     })
 
     return NextResponse.json({ ok: true })
