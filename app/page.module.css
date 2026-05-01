@@ -583,6 +583,7 @@
   gap: 8px;
   margin-top: 10px;
   margin-bottom: 8px;
+  flex-direction: row;
 }
 
 .categoryInput {

@@ -717,22 +717,6 @@ export default function Home() {
                     +
                   </button>
                 )}
-                {!isMobile && selectedTodoIds.size === 0 && (
-                  <button
-                    className={`${styles.addTodoToggleBtn} ${showAddForm ? styles.addTodoToggleBtnActive : ''}`}
-                    onClick={() => {
-                      setShowAddForm(v => !v)
-                      setNewTodo('')
-                      if (!showAddForm && todoMode === 'normal') {
-                        setTodoMode('adding')
-                      } else {
-                        setTodoMode('normal')
-                      }
-                    }}
-                  >
-                    +
-                  </button>
-                )}
               </div>
             </div>
 
