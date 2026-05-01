@@ -1334,7 +1334,7 @@
     -webkit-user-select: none;
   }
 
-  input, textarea {
+  :global(input), :global(textarea), :global(select) {
     user-select: text;
     -webkit-user-select: text;
   }
