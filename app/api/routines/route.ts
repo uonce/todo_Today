@@ -9,23 +9,36 @@ if (!ROUTINE_DB_ID) {
 }
 
 export async function GET() {
-  if (!ROUTINE_DB_ID) return NextResponse.json({ routines: [] })
+  if (!ROUTINE_DB_ID) {
+    console.error('ROUTINE_DB_ID is not set')
+    return NextResponse.json({ routines: [], error: 'ROUTINE_DB_ID not configured' })
+  }
 
   try {
     const response = await notion.databases.query({
       database_id: ROUTINE_DB_ID,
     })
 
-    const routines = response.results.map((page: any) => ({
-      id: page.id,
-      title: page.properties['제목']?.title?.[0]?.plain_text || '',
-      category: page.properties['업무구분']?.select?.name || '',
-      order: page.properties['순서']?.number || 0,
-    }))
+    console.log('Routine DB query result:', response.results.length, 'items')
+    if (response.results.length > 0) {
+      console.log('First item properties:', Object.keys(response.results[0].properties))
+    }
 
+    const routines = response.results.map((page: any) => {
+      const props = page.properties
+      return {
+        id: page.id,
+        title: props['할일']?.title?.[0]?.plain_text || '',
+        category: props['업무구분']?.select?.name || '',
+        order: props['순서']?.number || 0,
+      }
+    })
+
+    console.log('Parsed routines:', routines)
     return NextResponse.json({ routines: routines.sort((a, b) => a.order - b.order) })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    console.error('Routine API error:', e.message)
+    return NextResponse.json({ error: e.message, routines: [] }, { status: 500 })
   }
 }
 
@@ -41,7 +54,7 @@ export async function POST(req: NextRequest) {
     const maxOrder = Math.max(...response.results.map((p: any) => p.properties['순서']?.number || 0), 0)
 
     const properties: any = {
-      '제목': { title: [{ text: { content: title } }] },
+      '할일': { title: [{ text: { content: title } }] },
       '순서': { number: order ?? maxOrder + 1 },
     }
     if (category) {
@@ -55,7 +68,7 @@ export async function POST(req: NextRequest) {
 
     const routine = {
       id: page.id,
-      title: page.properties['제목']?.title?.[0]?.plain_text || title,
+      title: page.properties['할일']?.title?.[0]?.plain_text || title,
       category: page.properties['업무구분']?.select?.name || '',
       order: page.properties['순서']?.number || 0,
     }
@@ -71,7 +84,7 @@ export async function PUT(req: NextRequest) {
 
   try {
     const properties: any = {
-      '제목': { title: [{ text: { content: title } }] },
+      '할일': { title: [{ text: { content: title } }] },
     }
     if (category) {
       properties['업무구분'] = { select: { name: category } }

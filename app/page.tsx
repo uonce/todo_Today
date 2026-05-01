@@ -191,9 +191,13 @@ export default function Home() {
     try {
       const res = await fetch('/api/routines')
       const data = await res.json()
+      console.log('Fetch routines response:', data)
+      if (data.error) {
+        console.error('Routine API error:', data.error)
+      }
       setRoutines(data.routines || [])
     } catch (e) {
-      console.error(e)
+      console.error('Fetch routines error:', e)
     } finally {
       setLoadingRoutines(false)
     }
