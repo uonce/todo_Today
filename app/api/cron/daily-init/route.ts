@@ -47,6 +47,20 @@ export async function GET(req: NextRequest) {
 
   const today = getKstDateStr()
 
+  // 디버그: 실제 env var 값 확인 (배포 후 확인하고 제거)
+  const debugInfo = {
+    TODAY: today,
+    DAILY_LOG_DB_ID: DAILY_LOG_DB_ID || '⚠️ NOT SET',
+    TODO_DB_ID: TODO_DB_ID || '⚠️ NOT SET',
+    ROUTINE_DB_ID: ROUTINE_DB_ID || '⚠️ NOT SET',
+    NOTION_TOKEN: process.env.NOTION_TOKEN ? '✓ SET' : '⚠️ NOT SET',
+  }
+  console.log('Cron env vars:', JSON.stringify(debugInfo))
+
+  if (!DAILY_LOG_DB_ID || !TODO_DB_ID) {
+    return NextResponse.json({ error: 'Required env vars not set', debug: debugInfo }, { status: 500 })
+  }
+
   try {
     // 1. Daily Log가 이미 있으면 전체 스킵
     const existingLog = await notion.databases.query({
